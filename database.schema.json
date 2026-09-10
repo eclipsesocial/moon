@@ -1,0 +1,57 @@
+{
+  "users": {
+    "{uid}": {
+      "name": "string",
+      "email": "string",
+      "role": "user|admin",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp"
+    }
+  },
+  "profiles": {
+    "{uid}": {
+      "displayName": "string",
+      "username": "string",
+      "bio": "string",
+      "location": "string",
+      "relationship": "string",
+      "profilePhotoUrl": "string",
+      "coverPhotoUrl": "string",
+      "spotify": "string",
+      "privacy": "object",
+      "updatedAt": "timestamp"
+    }
+  },
+  "posts": {
+    "{postId}": {
+      "authorId": "uid",
+      "authorName": "string",
+      "text": "string",
+      "mediaUrl": "string",
+      "mediaType": "image|video",
+      "visibility": "public|friends|private",
+      "createdAt": "timestamp"
+    }
+  },
+  "statuses": "{statusId}: {authorId,text,mediaUrl,visibility,createdAt}",
+  "groups": "{groupId}: {ownerId,name,description,visibility,coverUrl,createdAt}",
+  "groupMembers": "{groupId}/{uid}: {role,joinedAt}",
+  "groupPosts": "{groupId}/{postId}: post",
+  "friendRequests": "{targetUid}/{requesterUid}: {status,createdAt}",
+  "friendships": "{uid}/{friendUid}: {createdAt}",
+  "chats": "{chatId}: {type,createdAt,members}",
+  "messages": "{chatId}/{messageId}: {senderId,text,mediaUrl,createdAt}",
+  "notifications": "{uid}/{notificationId}: {type,text,from,read,createdAt}",
+  "comments": "{postId}/{commentId}: {authorId,text,createdAt}",
+  "reactions": "{postId}/{uid}: {type,createdAt}",
+  "shares": "{postId}/{uid}: {createdAt}",
+  "albums": "{uid}/{albumId}: {name,description,coverUrl,privacy,createdAt}",
+  "photos": "{uid}/{photoId}: {albumId,url,caption,createdAt}",
+  "videos": "{uid}/{videoId}: {url,thumbnailUrl,caption,createdAt}",
+  "blocks": "{uid}/{blockedUid}: {createdAt}",
+  "reports": "{reportId}: {reporterId,targetType,targetId,reason,status,createdAt}",
+  "privacySettings": "{uid}: privacy configuration",
+  "userSettings": "{uid}: settings",
+  "spotify": "{uid}: {trackUrl,trackName,artist,coverUrl}",
+  "admin": "{uid}: administrative metadata"
+}

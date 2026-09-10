@@ -1,0 +1,151 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['name','role']) && newData.child('role').val() === 'user' || (data.child('role').val() === 'admin' && auth != null && auth.uid === $uid)"
+      }
+    },
+
+    "accountData": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "profiles": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "posts": {
+      "$postId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() ? newData.child('authorId').val() === auth.uid : data.child('authorId').val() === auth.uid)"
+      }
+    },
+    "comments": {
+      "$postId": {
+        "$commentId": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() ? newData.child('authorId').val() === auth.uid : data.child('authorId').val() === auth.uid)"
+        }
+      }
+    },
+    "reactions": {
+      "$postId": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "shares": {
+      "$postId": {
+        "$shareId": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.child('userId').val() === auth.uid"
+        }
+      }
+    },
+    "statuses": {
+      "$statusId": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.child('authorId').val() === auth.uid"
+      }
+    },
+    "photos": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "albums": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "videos": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "friendships": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "friendRequests": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || newData.child('from').val() === auth.uid)"
+      }
+    },
+    "groups": {
+      "$groupId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() ? newData.child('ownerId').val() === auth.uid : data.child('ownerId').val() === auth.uid)"
+      }
+    },
+    "groupMembers": {
+      "$groupId": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null && (auth.uid === $uid || root.child('groups').child($groupId).child('ownerId').val() === auth.uid)"
+        }
+      }
+    },
+    "groupPosts": {
+      "$groupId": {
+        "$postId": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.child('authorId').val() === auth.uid"
+        }
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "blocks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "privacySettings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "userSettings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "messages": {
+      "$chatId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "admin": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    }
+  }
+}

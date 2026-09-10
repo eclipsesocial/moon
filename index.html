@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#08091a" />
+  <link rel="icon" href="./public/eclipse.svg" />
+  <title>Eclipse — Alpha 0.0.0</title>
+
+  <!-- Fallback visual: aparece mesmo se o index.html for aberto diretamente.
+       Para usar login/cadastro/Firebase, execute o projeto com Vite. -->
+  <style>
+    html,body{margin:0;min-height:100%;background:#060714;color:#eef0ff;font-family:Inter,system-ui,-apple-system,sans-serif}
+    .fallback{min-height:100vh;display:grid;place-items:center;overflow:hidden;position:relative;
+      background:radial-gradient(circle at 78% 35%,#5630b933,transparent 26%),
+                 radial-gradient(circle at 18% 75%,#1764d522,transparent 25%),#060714}
+    .fallback-box{text-align:center;position:relative;z-index:2;padding:40px;max-width:760px}
+    .fallback-logo{display:inline-flex;align-items:center;gap:12px;margin-bottom:25px}
+    .fallback-eclipse{width:52px;height:52px;border-radius:50%;position:relative;
+      background:linear-gradient(135deg,#bda8ff,#2563eb);box-shadow:0 0 45px #7c3aed66}
+    .fallback-eclipse:after{content:"";position:absolute;width:43px;height:43px;border-radius:50%;
+      background:#060714;right:-3px;top:-2px}
+    .fallback-logo strong{font-size:30px;letter-spacing:.03em}
+    .fallback h1{font-size:clamp(42px,7vw,76px);line-height:.95;margin:10px 0 18px;letter-spacing:-.05em}
+    .fallback h1 em{font-style:normal;background:linear-gradient(100deg,#bda8ff,#6aa5ff);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    .fallback p{color:#8e97bb;font-size:17px;line-height:1.7}
+    .fallback .hint{margin-top:25px;font-size:13px;color:#70799f}
+    .fallback-stars{position:absolute;inset:0;opacity:.6;background-image:
+      radial-gradient(circle at 10% 20%,#fff 0 1px,transparent 1.5px),
+      radial-gradient(circle at 30% 70%,#fff 0 1px,transparent 1.5px),
+      radial-gradient(circle at 70% 15%,#fff 0 1px,transparent 1.5px),
+      radial-gradient(circle at 88% 65%,#fff 0 1px,transparent 1.5px)}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <main class="fallback">
+      <div class="fallback-stars"></div>
+      <div class="fallback-box">
+        <div class="fallback-logo">
+          <span class="fallback-eclipse"></span>
+          <strong>Eclipse</strong>
+        </div>
+        <h1>Onde sua <em>história</em> ganha vida.</h1>
+        <p>Uma rede social para quem cria personagens, identidades interpretativas e universos próprios.</p>
+        <p class="hint">O projeto foi carregado. Para acessar o login, cadastro e Firebase, abra pelo Vite usando <b>npm run dev</b>.</p>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./src/main.jsx"></script>
+</body>
+</html>

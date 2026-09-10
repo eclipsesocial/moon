@@ -1,0 +1,1 @@
+Frontend React/Vite do Projeto Eclipse. Firebase configurado em firebase.js.
