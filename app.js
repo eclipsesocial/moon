@@ -3,14 +3,15 @@
   "use strict";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7f_zG",
-    authDomain: "projetoeclipse-2374b.firebaseapp.com",
-    databaseURL: "https://projetoeclipse-2374b-default-rtdb.firebaseio.com",
-    projectId: "projetoeclipse-2374b",
-    storageBucket: "projetoeclipse-2374b.firebasestorage.app",
-    messagingSenderId: "460740273909",
-    appId: "1:460740273909:web:fb081ae806b15802a0c7bc"
-  };
+  apiKey: "AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7fZ_g",
+  authDomain: "projetoeclipse-2374b.firebaseapp.com",
+  databaseURL: "https://projetoeclipse-2374b-default-rtdb.firebaseio.com",
+  projectId: "projetoeclipse-2374b",
+  storageBucket: "projetoeclipse-2374b.firebasestorage.app",
+  messagingSenderId: "460740273909",
+  appId: "1:460740273909:web:fb081ae806b15802a0c7bc",
+  measurementId: "G-0806KRDLS2"
+};
 
   let auth = null, db = null, storage = null, currentUser = null;
   let setupStep = 1, profilePhotoFile = null, coverPhotoFile = null;
