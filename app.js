@@ -1,11 +1,48 @@
 (function(){'use strict';
 const firebaseConfig={apiKey:"AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7fZ_g",authDomain:"projetoeclipse-2374b.firebaseapp.com",databaseURL:"https://projetoeclipse-2374b-default-rtdb.firebaseio.com",projectId:"projetoeclipse-2374b",storageBucket:"projetoeclipse-2374b.firebasestorage.app",messagingSenderId:"460740273909",appId:"1:460740273909:web:fb081ae806b15802a0c7bc",measurementId:"G-0806KRDLS2"};
-let auth,db,storage,currentUser=null,currentProfile=null,setupStep=1,profilePhotoFile=null,coverPhotoFile=null,activeChatUid=null,activeChatRef=null;
+let auth,db,currentUser=null,currentProfile=null,setupStep=1,profilePhotoFile=null,coverPhotoFile=null,activeChatUid=null,activeChatRef=null;
 const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 function show(id){document.querySelectorAll('.landing,.auth-screen,.setup-screen,.dashboard').forEach(x=>x.classList.add('hidden'));const el=id==='home'?document.querySelector('.landing'):$(id);if(el)el.classList.remove('hidden');scrollTo(0,0)}
 function msg(el,text){if(el)el.textContent=text||''}
 function firebaseMessage(e){const m={'auth/email-already-in-use':'Este e-mail já está cadastrado.','auth/invalid-email':'Digite um e-mail válido.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail ou senha incorretos.','auth/network-request-failed':'Falha de conexão com o Firebase.'};return m[e?.code]||('Erro Firebase: '+(e?.message||'operação não concluída'))}
-function initFirebase(){try{if(!window.firebase)return false;if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.database();storage=firebase.storage();return true}catch(e){console.error(e);return false}}
+function initFirebase(){try{if(!window.firebase)return false;if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.database();return true}catch(e){console.error(e);return false}}
+
+async function imageFileToDataURL(file, options={}){
+  if(!file) return '';
+  if(!file.type || !file.type.startsWith('image/')) throw new Error('Envie um arquivo de imagem válido.');
+  const maxInput=10*1024*1024;
+  if(file.size>maxInput) throw new Error('A imagem original deve ter no máximo 10 MB.');
+  const maxWidth=options.maxWidth||1280;
+  const maxHeight=options.maxHeight||1280;
+  const quality=options.quality||0.82;
+  const maxOutput=options.maxOutput||1800*1024;
+  const src=await new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=()=>reject(new Error('Não foi possível ler a imagem.'));
+    r.readAsDataURL(file);
+  });
+  const img=await new Promise((resolve,reject)=>{
+    const el=new Image();
+    el.onload=()=>resolve(el);
+    el.onerror=()=>reject(new Error('Não foi possível processar a imagem.'));
+    el.src=src;
+  });
+  const scale=Math.min(1,maxWidth/img.naturalWidth,maxHeight/img.naturalHeight);
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+  const ctx=canvas.getContext('2d');
+  if(!ctx) throw new Error('Seu navegador não conseguiu processar a imagem.');
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  let q=quality, data=canvas.toDataURL('image/jpeg',q);
+  while(data.length>maxOutput*1.37 && q>0.45){
+    q-=0.07;
+    data=canvas.toDataURL('image/jpeg',q);
+  }
+  if(data.length>maxOutput*1.37) throw new Error('A imagem ficou muito grande. Escolha uma imagem menor.');
+  return data;
+}
 function avatar(url,cls='avatar'){return url?`<span class="${cls}"><img src="${esc(url)}"></span>`:`<span class="${cls}">☾</span>`}
 async function getProfile(uid){const s=await db.ref('profiles/'+uid).once('value');return s.val()||{uid}}
 function closeMobile(){ $('sidebar')?.classList.remove('open'); $('mobileOverlay')?.classList.add('hidden') }
@@ -101,7 +138,7 @@ function bindAuth(){$('loginForm').addEventListener('submit',async e=>{e.prevent
 function openSetup(u){currentUser=u;setupStep=1;profilePhotoFile=null;coverPhotoFile=null;$('setupBio').value='';$('setupRelationship').value='';$('profilePhoto').value='';$('coverPhoto').value='';$('profilePreview').innerHTML='<span>☾</span>';$('coverPreview').innerHTML='<span>Foto de capa</span>';showSetupStep();show('profileSetup')}
 function showSetupStep(){document.querySelectorAll('.setup-page').forEach(x=>x.classList.toggle('hidden',+x.dataset.step!==setupStep));$('setupStep').textContent=setupStep+' de 4';$('setupProgress').style.width=setupStep*25+'%';const t=['Vamos montar seu perfil.','Escolha sua foto de perfil.','Agora escolha sua foto de capa.','Como está seu relacionamento?'];const d=['Comece contando um pouco sobre você ou sobre sua personagem.','Essa será a imagem principal do seu perfil.','Sua capa ficará no topo da página do seu perfil.','Você poderá alterar essa informação depois.'];$('setupTitle').textContent=t[setupStep-1];$('setupDescription').textContent=d[setupStep-1];$('setupBack').style.visibility=setupStep===1?'hidden':'visible';$('setupNext').textContent=setupStep===4?'Concluir perfil':'Continuar'}
 function bindSetup(){$('setupBio').addEventListener('input',()=>$('bioCount').textContent=$('setupBio').value.length);$('profilePhoto').addEventListener('change',e=>{profilePhotoFile=e.target.files[0]||null;if(profilePhotoFile)$('profilePreview').innerHTML=`<img src="${URL.createObjectURL(profilePhotoFile)}">`});$('coverPhoto').addEventListener('change',e=>{coverPhotoFile=e.target.files[0]||null;if(coverPhotoFile)$('coverPreview').innerHTML=`<img src="${URL.createObjectURL(coverPhotoFile)}">`});$('setupBack').onclick=()=>{if(setupStep>1){setupStep--;showSetupStep()}};$('setupNext').onclick=finishOrNext}
-async function finishOrNext(){if(setupStep<4){setupStep++;showSetupStep();return}const b=$('setupNext');b.disabled=true;b.textContent='Salvando...';try{const uid=currentUser.uid,data={bio:$('setupBio').value.trim(),relationship:$('setupRelationship').value,setupCompleted:true,updatedAt:firebase.database.ServerValue.TIMESTAMP};if(profilePhotoFile){const r=storage.ref('profilePhotos/'+uid+'/profile');await r.put(profilePhotoFile);data.photoURL=await r.getDownloadURL()}if(coverPhotoFile){const r=storage.ref('coverPhotos/'+uid+'/cover');await r.put(coverPhotoFile);data.coverURL=await r.getDownloadURL()}await db.ref('profiles/'+uid).update(data);currentProfile=await getProfile(uid);openDashboard(currentUser)}catch(e){msg($('setupMessage'),firebaseMessage(e));b.disabled=false;b.textContent='Concluir perfil'}}
+async function finishOrNext(){if(setupStep<4){setupStep++;showSetupStep();return}const b=$('setupNext');b.disabled=true;b.textContent='Salvando...';try{const uid=currentUser.uid,data={bio:$('setupBio').value.trim(),relationship:$('setupRelationship').value,setupCompleted:true,updatedAt:firebase.database.ServerValue.TIMESTAMP};if(profilePhotoFile)data.photoURL=await imageFileToDataURL(profilePhotoFile,{maxWidth:800,maxHeight:800,maxOutput:1200*1024});if(coverPhotoFile)data.coverURL=await imageFileToDataURL(coverPhotoFile,{maxWidth:1600,maxHeight:700,maxOutput:1600*1024});await db.ref('profiles/'+uid).update(data);currentProfile=await getProfile(uid);openDashboard(currentUser)}catch(e){msg($('setupMessage'),firebaseMessage(e));b.disabled=false;b.textContent='Concluir perfil'}}
 async function loadHome(){await loadFeed();await loadStories();await loadSuggestions();renderMiniProfile()}
 function renderMiniProfile(){$('homeMiniProfile').innerHTML=`${avatar(currentProfile?.photoURL,'avatar')}<div><strong>${esc(currentProfile?.displayName||currentUser.displayName||'Perfil')}</strong><small>@${esc(currentProfile?.username||'')}</small></div>`}
 async function loadFeed(){const s=await db.ref('posts').orderByChild('createdAt').limitToLast(40).once('value');const arr=[];s.forEach(x=>arr.push({id:x.key,...x.val()}));arr.reverse();if(!arr.length){$('feedList').innerHTML='<div class="card post"><p class="muted">Seu feed ainda está vazio. Comece publicando algo.</p></div>';return}const profiles={};for(const p of arr){profiles[p.uid]??=await getProfile(p.uid)}$('feedList').innerHTML=arr.map(p=>postHTML(p,profiles[p.uid]||{})).join('');await bindPostInteractions()}
@@ -114,15 +151,63 @@ async function loadStories(){const s=await db.ref('statuses').orderByChild('crea
 async function loadSuggestions(){const s=await db.ref('profiles').limitToFirst(20).once('value');const arr=[];s.forEach(x=>{if(x.key!==currentUser.uid)arr.push({uid:x.key,...x.val()})});$('suggestionsList').innerHTML=arr.slice(0,5).map(x=>`<div class="suggestion"><button class="suggestion-person" data-profile-uid="${x.uid}">${avatar(x.photoURL,'mini-avatar')}<span><strong>${esc(x.displayName||'Usuário')}</strong><small>@${esc(x.username||'')}</small></span></button><button class="add-friend" data-add-friend="${x.uid}">Adicionar</button></div>`).join('')||'<p class="muted">Nenhuma sugestão encontrada.</p>';document.querySelectorAll('[data-add-friend]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.addFriend,b));document.querySelectorAll('.suggestion-person').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 function bindFeed(){$('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
 function openModal(id){$(id)?.classList.remove('hidden')}
-async function publishPost(){const text=$('postText').value.trim(),file=$('postImage').files[0];if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma imagem.');return}const b=$('publishBtn');b.disabled=true;try{let imageURL='';if(file){const r=storage.ref('posts/'+currentUser.uid+'/'+Date.now()+'_'+file.name);await r.put(file);imageURL=await r.getDownloadURL()}await db.ref('posts').push({uid:currentUser.uid,text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP,likesCount:0,commentsCount:0,sharesCount:0,reactions:{}});$('postText').value='';$('postImage').value='';$('postModal').classList.add('hidden');await loadFeed()}catch(e){msg($('postMsg'),firebaseMessage(e))}finally{b.disabled=false}}
-async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma imagem.');return}const b=$('publishStoryBtn');b.disabled=true;try{let imageURL='';if(file){const r=storage.ref('statuses/'+currentUser.uid+'/'+Date.now()+'_'+file.name);await r.put(file);imageURL=await r.getDownloadURL()}await db.ref('statuses').push({uid:currentUser.uid,displayName:currentUser.displayName||'Usuário',text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP});$('storyText').value='';$('storyImage').value='';$('storyModal').classList.add('hidden');await loadStories()}catch(e){msg($('storyMsg'),firebaseMessage(e))}finally{b.disabled=false}}
+async function publishPost(){
+  const text=$('postText').value.trim(),file=$('postImage').files[0];
+  if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma foto.');return}
+  const b=$('publishBtn');b.disabled=true;b.textContent='Publicando...';msg($('postMsg'),'');
+  try{
+    let imageURL='';
+    if(file) imageURL=await imageFileToDataURL(file,{maxWidth:1400,maxHeight:1400,maxOutput:1800*1024});
+    const ref=db.ref('posts').push();
+    await ref.set({uid:currentUser.uid,text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP,likesCount:0,commentsCount:0,sharesCount:0,reactions:{}});
+    $('postText').value='';$('postImage').value='';$('postModal').classList.add('hidden');await loadHome();
+  }catch(e){console.error('publishPost',e);msg($('postMsg'),'Não foi possível publicar: '+firebaseMessage(e))}
+  finally{b.disabled=false;b.textContent='Publicar'}
+}
+
+async function publishStory(){
+  const text=$('storyText').value.trim(),file=$('storyImage').files[0];
+  if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma foto.');return}
+  const b=$('publishStoryBtn');b.disabled=true;b.textContent='Publicando...';msg($('storyMsg'),'');
+  try{
+    let imageURL='';
+    if(file) imageURL=await imageFileToDataURL(file,{maxWidth:1400,maxHeight:1800,maxOutput:1800*1024});
+    await db.ref('statuses').push({uid:currentUser.uid,text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP});
+    $('storyText').value='';$('storyImage').value='';$('storyModal').classList.add('hidden');await loadHome();
+  }catch(e){console.error('publishStory',e);msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}
+  finally{b.disabled=false;b.textContent='Publicar story'}
+}
+
 async function renderOwnProfile(){const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
 async function viewProfile(uid){const p=await getProfile(uid);$('publicProfile').innerHTML=profileHTML(p,uid===currentUser.uid);bindProfileButtons();openPage('profilePage')}
-function profileHTML(p,isOwn=false){return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}${isOwn?`<button class="profile-photo-action profile-cover-action" id="profileCoverAction" title="Trocar foto de capa" aria-label="Trocar foto de capa">📷</button>`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-wrap"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div>${isOwn?`<button class="profile-photo-action profile-avatar-action" id="profilePhotoAction" title="Trocar foto de perfil" aria-label="Trocar foto de perfil">📷</button>`:''}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}${roleBadge(p.adminRole)}</h1><p>@${esc(p.username||'')}</p></div><div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button>`}</div></div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-info"><div class="card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${esc(p.relationship||'Não informado')}</div></div><div class="card"><h3>Publicações</h3><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div></div>`}
+function profileHTML(p,isOwn=false){return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}${isOwn?`<button class="profile-photo-action profile-cover-action" id="profileCoverAction" title="Trocar foto de capa" aria-label="Trocar foto de capa">📷</button>`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-wrap"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div>${isOwn?`<button class="profile-photo-action profile-avatar-action" id="profilePhotoAction" title="Trocar foto de perfil" aria-label="Trocar foto de perfil">📷</button>`:''}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}${roleBadge(p.adminRole)}</h1><p>@${esc(p.username||'')}</p></div><div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button>`}</div></div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-about card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${esc(p.relationship||'Não informado')}</div></div><div class="profile-publications card"><div class="profile-section-title"><h3>Publicações</h3></div><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div>`}
 function bindProfileButtons(){const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid);if(edit)edit.onclick=openProfileEditor;const pf=$('editProfilePhoto'),cf=$('editProfileCover');const pa=$('profilePhotoAction'),ca=$('profileCoverAction');if(pa&&pf){pa.onclick=()=>pf.click();pf.onchange=()=>saveProfileEdit();}if(ca&&cf){ca.onclick=()=>cf.click();cf.onchange=()=>saveProfileEdit();}loadProfilePosts()}
 async function loadProfilePosts(){const holder=$('profilePosts');if(!holder)return;const s=await db.ref('posts').orderByChild('uid').equalTo($('profileAddFriend')?.dataset.uid||currentUser.uid).once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));holder.innerHTML=a.length?a.slice(0,10).map(p=>`<div class="profile-post"><strong>${esc(p.text||'Publicação com mídia')}</strong>${p.imageURL?`<img src="${esc(p.imageURL)}">`:''}</div>`).join(''):'<p class="muted">Nenhuma publicação ainda.</p>'}
 function openProfileEditor(){const p=currentProfile||{};$('profileEditPanel').classList.add('open');$('editProfileName').value=p.displayName||currentUser.displayName||'';$('editProfileUsername').value=p.username||'';$('editProfileBio').value=p.bio||'';$('editProfileLocation').value=p.location||'';$('editProfileRelationship').value=p.relationship||''}
-async function saveProfileEdit(){const b=$('saveProfileEdit');b.disabled=true;try{const uid=currentUser.uid,data={displayName:$('editProfileName').value.trim(),username:$('editProfileUsername').value.trim().replace(/^@/,''),bio:$('editProfileBio').value.trim(),location:$('editProfileLocation').value.trim(),relationship:$('editProfileRelationship').value,updatedAt:firebase.database.ServerValue.TIMESTAMP};const pf=$('editProfilePhoto').files[0],cf=$('editProfileCover').files[0];if(pf){const r=storage.ref('profilePhotos/'+uid+'/profile');await r.put(pf);data.photoURL=await r.getDownloadURL()}if(cf){const r=storage.ref('coverPhotos/'+uid+'/cover');await r.put(cf);data.coverURL=await r.getDownloadURL()}await db.ref('profiles/'+uid).update(data);await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});currentProfile=await getProfile(uid);$('profileEditPanel').classList.remove('open');renderOwnProfile();$('topAvatar').outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');$('composerAvatar').outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"')}catch(e){msg($('profileEditMsg'),firebaseMessage(e))}finally{b.disabled=false}}
+async function saveProfileEdit(){
+  const b=$('saveProfileEdit');if(!b)return;b.disabled=true;
+  try{
+    const uid=currentUser.uid,data={
+      displayName:$('editProfileName').value.trim(),
+      username:$('editProfileUsername').value.trim().replace(/^@/,''),
+      bio:$('editProfileBio').value.trim(),
+      location:$('editProfileLocation').value.trim(),
+      relationship:$('editProfileRelationship').value,
+      updatedAt:firebase.database.ServerValue.TIMESTAMP
+    };
+    const pf=$('editProfilePhoto')?.files[0],cf=$('editProfileCover')?.files[0];
+    if(pf)data.photoURL=await imageFileToDataURL(pf,{maxWidth:800,maxHeight:800,maxOutput:1200*1024});
+    if(cf)data.coverURL=await imageFileToDataURL(cf,{maxWidth:1600,maxHeight:700,maxOutput:1600*1024});
+    await db.ref('profiles/'+uid).update(data);
+    await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});
+    currentProfile=await getProfile(uid);
+    $('profileEditPanel').classList.remove('open');
+    renderOwnProfile();
+    const ta=$('topAvatar');if(ta)ta.outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');
+    const ca=$('composerAvatar');if(ca)ca.outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"');
+  }catch(e){console.error('saveProfileEdit',e);msg($('profileEditMsg'),'Não foi possível salvar: '+firebaseMessage(e))}
+  finally{b.disabled=false}
+}
 async function sendFriendRequest(uid,button){if(!uid||uid===currentUser.uid)return;try{const existing=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(existing.exists()){button.textContent='Solicitação enviada';button.disabled=true;return}await db.ref('friendRequests/'+uid+'/'+currentUser.uid).set({uid:currentUser.uid,name:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('notifications/'+uid).push({type:'friend_request',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});button.textContent='Solicitação enviada';button.disabled=true}catch(e){alert(firebaseMessage(e))}}
 async function loadFriends(){const req=await db.ref('friendRequests/'+currentUser.uid).once('value'),r=[];req.forEach(x=>r.push({uid:x.key,...x.val()}));$('friendRequestsList').innerHTML=r.length?'<h3>Solicitações</h3>'+r.map(x=>`<div class="list-item"><div class="list-main">${avatar('','mini-avatar')}<div><strong>${esc(x.name||'Usuário')}</strong><small>Quer ser seu amigo.</small></div></div><button class="primary" data-accept="${x.uid}">Aceitar</button></div>`).join(''):'<p class="muted">Nenhuma solicitação de amizade.</p>';document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>acceptFriend(b.dataset.accept));const fs=await db.ref('friendships/'+currentUser.uid).once('value'),ids=[];fs.forEach(x=>ids.push(x.key));$('friendsList').innerHTML='<h3>Seus amigos</h3>'+(ids.length?'<div class="list">'+(await Promise.all(ids.map(async id=>{const p=await getProfile(id);return `<div class="list-item"><button class="suggestion-person" data-profile-uid="${id}">${avatar(p.photoURL,'mini-avatar')}<strong>${esc(p.displayName||'Usuário')}</strong></button><button class="secondary" data-message="${id}">Mensagem</button></div>`}))).join('')+'</div>':'<p class="muted">Você ainda não tem amigos.</p>');document.querySelectorAll('[data-message]').forEach(b=>b.onclick=()=>openChat(b.dataset.message));document.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 async function acceptFriend(uid){const updates={};updates['friendships/'+currentUser.uid+'/'+uid]=true;updates['friendships/'+uid+'/'+currentUser.uid]=true;updates['friendRequests/'+currentUser.uid+'/'+uid]=null;await db.ref().update(updates);loadFriends()}

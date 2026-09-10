@@ -381,3 +381,33 @@ body{
 }
 
 #editProfilePhoto,#editProfileCover{display:none !important;}
+
+/* Perfil: Sobre em cima e Publicações abaixo, sempre em coluna única */
+.profile-page .profile-main{
+  display:flex !important;
+  flex-direction:column !important;
+}
+.profile-page .profile-about,
+.profile-page .profile-publications{
+  width:100% !important;
+  box-sizing:border-box;
+  margin-top:16px;
+}
+.profile-page .profile-publications{
+  min-height:120px;
+}
+.profile-section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.profile-section-title h3{margin:0;}
+.profile-page .profile-info{
+  display:block !important;
+}
+.profile-page .profile-info > .card{
+  width:100%;
+}
+
+#postModal.hidden,#storyModal.hidden{display:none !important;}
