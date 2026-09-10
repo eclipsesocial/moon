@@ -2,7 +2,7 @@
 // O Firebase é usado diretamente pelo navegador através do SDK compat.
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7f_zG",
+  apiKey: "AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7fZ_g",
   authDomain: "projetoeclipse-2374b.firebaseapp.com",
   databaseURL: "https://projetoeclipse-2374b-default-rtdb.firebaseio.com",
   projectId: "projetoeclipse-2374b",
@@ -93,7 +93,7 @@ function firebaseError(err) {
     "auth/invalid-credential": "E-mail ou senha incorretos.",
     "auth/user-not-found": "E-mail ou senha incorretos."
   };
-  return map[err.code] || "Não foi possível concluir a operação. Verifique o Firebase.";
+  return map[err.code] || ("Erro Firebase: " + (err.code || "desconhecido") + " — " + (err.message || "verifique a configuração do Firebase."));
 }
 
 function openDashboard(user) {
