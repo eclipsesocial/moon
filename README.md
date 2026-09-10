@@ -32,3 +32,7 @@ Não é necessário ativar o Google.
 A senha nunca é gravada no Realtime Database. O Firebase Authentication administra a credencial. Os dados do perfil são gravados em `users/{uid}` e `profiles/{uid}`.
 
 Antes de produção, configure regras de segurança restritivas no Realtime Database e Storage.
+
+
+## Perfil interativo pós-cadastro
+Após criar a conta, o usuário passa por uma configuração em 4 etapas: bio, foto de perfil, foto de capa e relacionamento. As imagens são enviadas ao Firebase Storage e os dados do perfil ao Realtime Database.

@@ -66,15 +66,142 @@
       </div>
     </section>
 
-    <section id="dashboard" class="dashboard hidden">
-      <aside><div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-        <nav><button>⌂ Início</button><button>◎ Meu perfil</button><button>♢ Amigos</button><button>◈ Grupos</button><button>◇ Mensagens</button></nav>
-        <button id="logout" class="logout">Sair</button>
-      </aside>
-      <div class="dash-main"><header><span id="welcome"></span><button id="logoutTop">Sair</button></header>
-        <div class="welcome-box"><span class="eclipse-logo large"></span><div><h2>Sua história começa aqui.</h2><p>Sua conta foi criada. Agora você pode construir seu perfil interpretativo.</p></div></div>
+    
+<section id="profileSetup" class="setup-screen hidden">
+  <div class="setup-shell">
+    <div class="setup-top">
+      <div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
+      <span class="setup-step" id="setupStep">1 de 4</span>
+    </div>
+
+    <div class="setup-progress"><span id="setupProgress"></span></div>
+
+    <div class="setup-card">
+      <span class="eyebrow">CONFIGURE SEU PERFIL</span>
+      <h1 id="setupTitle">Vamos montar seu perfil.</h1>
+      <p class="muted" id="setupDescription">Essas informações ajudam a apresentar sua identidade no Eclipse.</p>
+
+      <div class="setup-page" data-step="1">
+        <label>Biografia
+          <textarea id="setupBio" maxlength="500" placeholder="Conte um pouco sobre você ou sobre sua personagem..."></textarea>
+        </label>
+        <div class="char-count"><span id="bioCount">0</span>/500</div>
       </div>
-    </section>
+
+      <div class="setup-page hidden" data-step="2">
+        <div class="upload-box">
+          <div id="profilePreview" class="avatar-preview"><span>☾</span></div>
+          <h3>Foto de perfil</h3>
+          <p class="muted">Escolha uma imagem para representar seu perfil.</p>
+          <input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp">
+        </div>
+      </div>
+
+      <div class="setup-page hidden" data-step="3">
+        <div class="cover-upload">
+          <div id="coverPreview" class="cover-preview"><span>Foto de capa</span></div>
+          <h3>Foto de capa</h3>
+          <p class="muted">Essa imagem aparecerá no topo do seu perfil.</p>
+          <input id="coverPhoto" type="file" accept="image/png,image/jpeg,image/webp">
+        </div>
+      </div>
+
+      <div class="setup-page hidden" data-step="4">
+        <label>Relacionamento
+          <select id="setupRelationship">
+            <option value="">Prefiro não informar</option>
+            <option>Solteiro(a)</option>
+            <option>Em um relacionamento</option>
+            <option>Noivo(a)</option>
+            <option>Casado(a)</option>
+            <option>Complicado</option>
+          </select>
+        </label>
+      </div><div id="setupMessage" class="message"></div>
+      <div class="setup-actions">
+        <button id="setupBack" class="secondary" type="button">Voltar</button>
+        <button id="setupNext" class="primary" type="button">Continuar</button>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="dashboard" class="dashboard hidden">
+  <aside>
+    <div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
+    <nav id="mainNav">
+      <button data-page="homePage" class="active">⌂ Início</button>
+      <button data-page="profilePage">◎ Meu perfil</button>
+      <button data-page="friendsPage">♢ Amigos</button>
+      <button data-page="groupsPage">◈ Grupos</button>
+      <button data-page="messagesPage">◇ Mensagens</button>
+      <button data-page="notificationsPage">♧ Notificações</button>
+      <button data-page="discoverPage">⌕ Descobrir</button>
+      <button data-page="privacyPage">⚿ Privacidade</button>
+      <button data-page="settingsPage">⚙ Configurações</button>
+    </nav>
+    <button id="logout" class="logout">Sair</button>
+  </aside>
+
+  <div class="dash-main">
+    <header><span id="welcome"></span><button id="logoutTop">Sair</button></header>
+
+    <div id="homePage" class="dash-page">
+      <div class="welcome-box">
+        <span class="eclipse-logo large"></span>
+        <div><h2>Sua história começa aqui.</h2><p>Bem-vindo ao Eclipse. Explore as funções da sua rede social.</p></div>
+      </div>
+    </div>
+
+    <div id="profilePage" class="dash-page hidden">
+      <div class="panel">
+        <h2>Meu perfil</h2>
+        <p class="muted">Configure as informações do seu perfil interpretativo.</p>
+        <form id="profileForm">
+          <label>Nome<input id="profileName" type="text" required></label>
+          <label>Username<input id="profileUsername" type="text"></label>
+          <label>Local onde mora<input id="profileLocation" type="text"></label>
+          <label>Relacionamento<input id="profileRelationship" type="text"></label>
+          <label>Biografia<textarea id="profileBio"></textarea></label>
+          <button class="primary wide" type="submit">Salvar perfil</button>
+          <div id="profileMsg" class="message"></div>
+        </form>
+      </div>
+    </div>
+
+    <div id="friendsPage" class="dash-page hidden">
+      <div class="panel"><h2>Amigos</h2><p class="muted">Gerencie suas conexões no Eclipse.</p>
+        <form id="friendForm"><label>UID do usuário<input id="friendUid" required></label><button class="primary" type="submit">Enviar solicitação</button><div id="friendMsg" class="message"></div></form>
+      </div>
+    </div>
+
+    <div id="groupsPage" class="dash-page hidden">
+      <div class="panel"><h2>Grupos</h2><p class="muted">Crie e encontre comunidades interpretativas.</p>
+        <form id="groupForm"><label>Nome do grupo<input id="groupName" required></label><label>Descrição<textarea id="groupDescription"></textarea></label><button class="primary" type="submit">Criar grupo</button><div id="groupMsg" class="message"></div></form>
+        <div id="groupsList" class="list"></div>
+      </div>
+    </div>
+
+    <div id="messagesPage" class="dash-page hidden">
+      <div class="panel"><h2>Mensagens</h2><p class="muted">Converse com seus amigos.</p>
+        <form id="messageForm"><label>UID do destinatário<input id="messageUid" required></label><label>Mensagem<textarea id="messageText" required></textarea></label><button class="primary" type="submit">Enviar mensagem</button><div id="messageMsg" class="message"></div></form>
+      </div>
+    </div>
+
+    <div id="notificationsPage" class="dash-page hidden"><div class="panel"><h2>Notificações</h2><div id="notificationsList" class="list"><p class="muted">Carregando...</p></div></div></div>
+    <div id="discoverPage" class="dash-page hidden"><div class="panel"><h2>Descobrir</h2><p class="muted">Pesquise e descubra pessoas, perfis e comunidades do Eclipse.</p></div></div>
+    <div id="privacyPage" class="dash-page hidden">
+      <div class="panel"><h2>Checkup de Privacidade</h2><p class="muted">Controle quem pode encontrar você e acessar seu conteúdo.</p>
+        <form id="privacyForm">
+          <label>Quem pode ver sua lista de amigos<select id="privacyFriends"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
+          <label>Quem pode encontrar você<select id="privacyFind"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
+          <label>Receber solicitações de amizade<select id="privacyRequests"><option value="yes">Sim</option><option value="no">Não</option></select></label>
+          <button class="primary" type="submit">Salvar privacidade</button><div id="privacyMsg" class="message"></div>
+        </form>
+      </div>
+    </div>
+    <div id="settingsPage" class="dash-page hidden"><div class="panel"><h2>Configurações</h2><p class="muted">Configurações da sua conta estarão aqui.</p></div></div>
+  </div>
+</section>
   </div>
 
   <!-- Firebase sem Vite, sem React e sem build: SDK carregado diretamente pelo navegador. -->
