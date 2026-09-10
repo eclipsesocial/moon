@@ -1,46 +1,34 @@
-# Projeto Eclipse — Alpha 0.0.0
+# Projeto Eclipse — Alpha 0.0.0 — versão sem Vite
 
-## IMPORTANTE: como abrir corretamente
+Esta versão é um site **estático**, feito somente com HTML, CSS e JavaScript.
 
-Este é um projeto React/Vite. **Não abra o `index.html` com duplo clique** (`file://`), pois os módulos JavaScript do React podem ser bloqueados pelo navegador.
+Não usa:
+- Vite
+- React
+- npm
+- build
+- GitHub Actions
 
-No terminal, dentro desta pasta:
+Pode ser publicado diretamente no GitHub Pages.
 
-```bash
-npm install
-npm run dev
-```
+## Publicação no GitHub Pages
 
-Depois abra o endereço mostrado pelo Vite, normalmente:
+Envie estes arquivos para a branch configurada no Pages e publique a pasta raiz.
 
-`http://localhost:5173/`
+O arquivo de entrada é:
 
-## Correção desta versão
+`index.html`
 
-- Corrigido o `index.html` que continha um `\n` literal dentro do HTML.
-- Adicionado um fallback visual para que a página inicial não fique totalmente branca caso o HTML seja aberto diretamente.
-- Mantida a tela inicial Eclipse com identidade roxa/azul e logo de eclipse.
-- O React continua responsável pela tela funcional de login, cadastro e aplicação.
+Não há necessidade de executar `npm install` ou `npm run dev`.
 
 ## Firebase
 
-O projeto usa Firebase Authentication, Realtime Database e Storage. Verifique as regras do Firebase antes de publicar em produção.
+O SDK do Firebase é carregado diretamente por CDN. Ative no Firebase Authentication:
 
+**Authentication → Sign-in method → E-mail/Password**
 
-## Cadastro e proteção de dados
+Não é necessário ativar o Google.
 
-O Eclipse usa **Firebase Authentication com E-mail/Senha**, e não autenticação Google. O cadastro também grava os dados necessários no **Realtime Database**:
+A senha nunca é gravada no Realtime Database. O Firebase Authentication administra a credencial. Os dados do perfil são gravados em `users/{uid}` e `profiles/{uid}`.
 
-- `users/{uid}`: nome e papel básico da conta;
-- `accountData/{uid}`: e-mail e data de nascimento, com leitura/escrita restritas ao próprio usuário;
-- `profiles/{uid}`: dados públicos/editáveis do perfil.
-
-**A senha nunca é gravada no Realtime Database.** Não é seguro armazenar senhas em texto ou criar uma senha reversivelmente criptografada. O Firebase Authentication gerencia o segredo de autenticação.
-
-O tráfego entre navegador e Firebase usa HTTPS/TLS e o Firebase fornece criptografia dos dados armazenados. Para adicionar **criptografia de campo ponta a ponta** (por exemplo, criptografar dados privados antes de persistir), precisamos de uma camada de gerenciamento de chaves/servidor; colocar a chave secreta no JavaScript do navegador não seria uma proteção real.
-
-### Ativar o cadastro por e-mail
-
-No Firebase Console: **Authentication → Sign-in method → E-mail/Password → Enable**. Não é necessário ativar Google.
-
-Depois, publique as regras do `database.rules.json` no Realtime Database.
+Antes de produção, configure regras de segurança restritivas no Realtime Database e Storage.
