@@ -9,13 +9,93 @@ function initFirebase(){try{if(!window.firebase)return false;if(!firebase.apps.l
 function avatar(url,cls='avatar'){return url?`<span class="${cls}"><img src="${esc(url)}"></span>`:`<span class="${cls}">☾</span>`}
 async function getProfile(uid){const s=await db.ref('profiles/'+uid).once('value');return s.val()||{uid}}
 function closeMobile(){ $('sidebar')?.classList.remove('open'); $('mobileOverlay')?.classList.add('hidden') }
+
+async function getUserRole(uid){
+  if(!uid)return null;
+  const s=await db.ref('admin/'+uid).once('value');
+  const v=s.val();
+  return v&&v.role?v.role:null;
+}
+function roleBadge(role){
+  if(role==='admin') return '<span class="role-badge role-admin role-badge-inline">🛡 Administrador</span>';
+  if(role==='moderator') return '<span class="role-badge role-moderator role-badge-inline">🛡 Moderador</span>';
+  return '';
+}
+async function refreshMyAdminUI(){
+  if(!currentUser)return;
+  const role=await getUserRole(currentUser.uid);
+  currentUserRole=role;
+  const nav=$('adminNavItem');
+  if(nav)nav.classList.toggle('hidden',role!=='admin');
+  const badge=$('myAdminBadge');
+  if(badge){
+    badge.textContent=role==='admin'?'🛡 Administrador':role==='moderator'?'🛡 Moderador':'';
+    badge.className='role-badge '+(role==='admin'?'role-admin':'role-moderator')+(role?'':' hidden');
+  }
+  return role;
+}
+async function loadAdminTeam(){
+  const holder=$('adminTeamList');if(!holder)return;
+  const me=await getUserRole(currentUser.uid);
+  if(me!=='admin'){
+    holder.innerHTML='<p class="muted">Acesso restrito aos administradores.</p>';return;
+  }
+  const s=await db.ref('admin').once('value');
+  const entries=[];
+  s.forEach(x=>entries.push({uid:x.key,...x.val()}));
+  entries.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  if(!entries.length){holder.innerHTML='<p class="muted">Nenhum administrador ou moderador cadastrado.</p>';return;}
+  const rows=[];
+  for(const x of entries){
+    const p=await getProfile(x.uid);
+    rows.push(`<div class="admin-team-person">
+      <div class="person-main">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||'Usuário')}</strong><small class="muted">@${esc(p.username||'')}</small></div></div>
+      <div class="admin-team-actions"><span class="role-badge ${x.role==='admin'?'role-admin':'role-moderator'}">🛡 ${x.role==='admin'?'Administrador':'Moderador'}</span>
+      ${x.uid!==currentUser.uid?`<button class="secondary" data-remove-admin="${esc(x.uid)}">Remover</button>`:''}</div>
+    </div>`);
+  }
+  holder.innerHTML=rows.join('');
+  holder.querySelectorAll('[data-remove-admin]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Remover o cargo desta pessoa?'))return;
+    await db.ref('admin/'+b.dataset.removeAdmin).remove();
+    const p=await getProfile(b.dataset.removeAdmin);
+    await db.ref('profiles/'+b.dataset.removeAdmin).update({adminRole:null});
+    loadAdminTeam();
+  });
+}
+async function addAdminRole(e){
+  e.preventDefault();
+  const msgEl=$('adminRoleMsg');msg(msgEl,'');
+  const role=$('adminTargetRole').value;
+  const username=$('adminTargetUsername').value.trim().replace(/^@/,'').toLowerCase();
+  if(!username)return;
+  const me=await getUserRole(currentUser.uid);
+  if(me!=='admin'){msg(msgEl,'Somente administradores podem alterar cargos.');return;}
+  const s=await db.ref('profiles').orderByChild('username').equalTo(username).limitToFirst(1).once('value');
+  let target=null;s.forEach(x=>target={uid:x.key,...x.val()});
+  if(!target){msg(msgEl,'Usuário não encontrado. Verifique o username.');return;}
+  await db.ref('admin/'+target.uid).set({
+    uid:target.uid,role,
+    assignedBy:currentUser.uid,
+    createdAt:firebase.database.ServerValue.TIMESTAMP
+  });
+  await db.ref('profiles/'+target.uid).update({adminRole:role});
+  msg(msgEl,role==='admin'?'Administrador adicionado.':'Moderador adicionado.');
+  $('adminTargetUsername').value='';
+  loadAdminTeam();
+}
+async function loadAdminPage(){
+  const role=await refreshMyAdminUI();
+  if(role!=='admin'){openPage('homePage');return;}
+  loadAdminTeam();
+}
 function bindNavigation(){
  document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();show(b.dataset.screen)}));
  document.querySelectorAll('#mainNav [data-page],.top-icon').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));
  $('topProfile').onclick=()=>openPage('profilePage'); $('mobileMenu').onclick=()=>{$('sidebar').classList.add('open');$('mobileOverlay').classList.remove('hidden')};$('mobileClose').onclick=closeMobile;$('mobileOverlay').onclick=closeMobile;
 }
-function openPage(id){document.querySelectorAll('.dash-page').forEach(p=>p.classList.add('hidden'));$(id)?.classList.remove('hidden');document.querySelectorAll('#mainNav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));closeMobile();if(id==='homePage')loadHome();if(id==='profilePage')renderOwnProfile();if(id==='friendsPage')loadFriends();if(id==='groupsPage')loadGroups();if(id==='notificationsPage')loadNotifications()}
-function openDashboard(u){currentUser=u;$('welcome').textContent=u.displayName||'Meu perfil';$('topAvatar').outerHTML=avatar(currentProfile?.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');$('composerAvatar').outerHTML=avatar(currentProfile?.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"');show('dashboard');openPage('homePage');loadChatFriends()}
+function openPage(id){document.querySelectorAll('.dash-page').forEach(p=>p.classList.add('hidden'));$(id)?.classList.remove('hidden');document.querySelectorAll('#mainNav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));closeMobile();if(id==='homePage')loadHome();if(id==='profilePage')renderOwnProfile();if(id==='friendsPage')loadFriends();if(id==='groupsPage')loadGroups();if(id==='notificationsPage')loadNotifications();if(id==='adminPage')loadAdminPage()}
+function openDashboard(u){currentUser=u;$('welcome').textContent=u.displayName||'Meu perfil';$('topAvatar').outerHTML=avatar(currentProfile?.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');$('composerAvatar').outerHTML=avatar(currentProfile?.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"');show('dashboard');openPage('homePage');loadChatFriends();refreshMyAdminUI()}
 async function checkAfterLogin(u){try{currentProfile=await getProfile(u.uid);if(currentProfile.setupCompleted===true)openDashboard(u);else openSetup(u)}catch(e){console.error(e);openDashboard(u)}}
 function bindAuth(){$('loginForm').addEventListener('submit',async e=>{e.preventDefault();msg($('loginMsg'),'');try{await auth.signInWithEmailAndPassword($('loginEmail').value.trim(),$('loginPassword').value)}catch(err){msg($('loginMsg'),firebaseMessage(err))}});$('registerForm').addEventListener('submit',async e=>{e.preventDefault();msg($('registerMsg'),'');const p=$('regPassword').value;if(p!==$('regConfirm').value){msg($('registerMsg'),'As senhas não são iguais.');return}try{const c=await auth.createUserWithEmailAndPassword($('regEmail').value.trim().toLowerCase(),p);await c.user.updateProfile({displayName:$('regName').value.trim()});const uid=c.user.uid, name=$('regName').value.trim(), username=$('regUsername').value.trim().replace(/^@/,'').toLowerCase();await db.ref('users/'+uid).set({uid,name,username,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('profiles/'+uid).set({uid,displayName:name,username,birthDate:$('regBirth').value,bio:'',location:'',relationship:'',photoURL:'',coverURL:'',setupCompleted:false,createdAt:firebase.database.ServerValue.TIMESTAMP})}catch(err){msg($('registerMsg'),firebaseMessage(err))}})}
 function openSetup(u){currentUser=u;setupStep=1;profilePhotoFile=null;coverPhotoFile=null;$('setupBio').value='';$('setupRelationship').value='';$('profilePhoto').value='';$('coverPhoto').value='';$('profilePreview').innerHTML='<span>☾</span>';$('coverPreview').innerHTML='<span>Foto de capa</span>';showSetupStep();show('profileSetup')}
@@ -25,7 +105,7 @@ async function finishOrNext(){if(setupStep<4){setupStep++;showSetupStep();return
 async function loadHome(){await loadFeed();await loadStories();await loadSuggestions();renderMiniProfile()}
 function renderMiniProfile(){$('homeMiniProfile').innerHTML=`${avatar(currentProfile?.photoURL,'avatar')}<div><strong>${esc(currentProfile?.displayName||currentUser.displayName||'Perfil')}</strong><small>@${esc(currentProfile?.username||'')}</small></div>`}
 async function loadFeed(){const s=await db.ref('posts').orderByChild('createdAt').limitToLast(40).once('value');const arr=[];s.forEach(x=>arr.push({id:x.key,...x.val()}));arr.reverse();if(!arr.length){$('feedList').innerHTML='<div class="card post"><p class="muted">Seu feed ainda está vazio. Comece publicando algo.</p></div>';return}const profiles={};for(const p of arr){profiles[p.uid]??=await getProfile(p.uid)}$('feedList').innerHTML=arr.map(p=>postHTML(p,profiles[p.uid]||{})).join('');await bindPostInteractions()}
-function postHTML(p,pr){const liked=!!(p.reactions&&p.reactions[currentUser.uid]);const likes=p.likesCount||Object.keys(p.reactions||{}).length||0;const comments=p.commentsCount||0,shares=p.sharesCount||0;return `<article class="card post" data-post-id="${p.id}"><div class="post-head"><button class="post-author-link" data-profile-uid="${esc(p.uid)}">${avatar(pr.photoURL,'mini-avatar')}<span><strong>${esc(pr.displayName||'Usuário')}</strong><small>${p.createdAt?new Date(p.createdAt).toLocaleString('pt-BR'):''}</small></span></button></div>${p.text?`<div class="post-text">${esc(p.text)}</div>`:''}${p.imageURL?`<img class="post-image" src="${esc(p.imageURL)}">`:''}<div class="post-counts"><span>${likes} curtida${likes===1?'':'s'}</span><span>${comments} comentário${comments===1?'':'s'} · ${shares} compartilhamento${shares===1?'':'s'}</span></div><div class="post-actions"><button class="${liked?'liked':''}" data-like-post="${p.id}">♡ Curtir</button><button data-comment-post="${p.id}">◯ Comentar</button><button data-share-post="${p.id}">↗ Compartilhar</button></div><div class="comments-box" id="comments-${p.id}"></div></article>`}
+function postHTML(p,pr){const liked=!!(p.reactions&&p.reactions[currentUser.uid]);const likes=p.likesCount||Object.keys(p.reactions||{}).length||0;const comments=p.commentsCount||0,shares=p.sharesCount||0;return `<article class="card post" data-post-id="${p.id}"><div class="post-head"><button class="post-author-link" data-profile-uid="${esc(p.uid)}">${avatar(pr.photoURL,'mini-avatar')}<span><strong>${esc(pr.displayName||'Usuário')}${roleBadge(pr.adminRole)}</strong><small>${p.createdAt?new Date(p.createdAt).toLocaleString('pt-BR'):''}</small></span></button></div>${p.text?`<div class="post-text">${esc(p.text)}</div>`:''}${p.imageURL?`<img class="post-image" src="${esc(p.imageURL)}">`:''}<div class="post-counts"><span>${likes} curtida${likes===1?'':'s'}</span><span>${comments} comentário${comments===1?'':'s'} · ${shares} compartilhamento${shares===1?'':'s'}</span></div><div class="post-actions"><button class="${liked?'liked':''}" data-like-post="${p.id}">♡ Curtir</button><button data-comment-post="${p.id}">◯ Comentar</button><button data-share-post="${p.id}">↗ Compartilhar</button></div><div class="comments-box" id="comments-${p.id}"></div></article>`}
 async function bindPostInteractions(){document.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid));document.querySelectorAll('[data-like-post]').forEach(b=>b.onclick=()=>toggleLike(b.dataset.likePost));document.querySelectorAll('[data-comment-post]').forEach(b=>b.onclick=()=>toggleComments(b.dataset.commentPost));document.querySelectorAll('[data-share-post]').forEach(b=>b.onclick=()=>sharePost(b.dataset.sharePost))}
 async function toggleLike(id){const ref=db.ref('posts/'+id),snap=await ref.once('value'),p=snap.val()||{},r=p.reactions||{};if(r[currentUser.uid]){delete r[currentUser.uid]}else{r[currentUser.uid]=true}await ref.update({reactions:r,likesCount:Object.keys(r).length});await loadFeed()}
 async function toggleComments(id){const box=$('comments-'+id);if(box.classList.contains('loaded')){box.classList.toggle('open');return}const s=await db.ref('comments/'+id).orderByChild('createdAt').once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));box.innerHTML=`<div class="comments-list">${a.map(c=>`<div class="comment"><strong>${esc(c.name||'Usuário')}</strong><span>${esc(c.text)}</span></div>`).join('')}</div><form class="comment-form" data-comment-form="${id}"><input placeholder="Escreva um comentário..." required><button>Enviar</button></form>`;box.classList.add('loaded','open');box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.target.querySelector('input'),text=input.value.trim();if(!text)return;await db.ref('comments/'+id).push({uid:currentUser.uid,name:currentUser.displayName||currentProfile?.displayName||'Usuário',text,createdAt:firebase.database.ServerValue.TIMESTAMP});const p=await db.ref('posts/'+id).once('value');await db.ref('posts/'+id).update({commentsCount:(p.val()?.commentsCount||0)+1});input.value='';await toggleComments(id);box.classList.add('open')};}
@@ -38,8 +118,8 @@ async function publishPost(){const text=$('postText').value.trim(),file=$('postI
 async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma imagem.');return}const b=$('publishStoryBtn');b.disabled=true;try{let imageURL='';if(file){const r=storage.ref('statuses/'+currentUser.uid+'/'+Date.now()+'_'+file.name);await r.put(file);imageURL=await r.getDownloadURL()}await db.ref('statuses').push({uid:currentUser.uid,displayName:currentUser.displayName||'Usuário',text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP});$('storyText').value='';$('storyImage').value='';$('storyModal').classList.add('hidden');await loadStories()}catch(e){msg($('storyMsg'),firebaseMessage(e))}finally{b.disabled=false}}
 async function renderOwnProfile(){const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
 async function viewProfile(uid){const p=await getProfile(uid);$('publicProfile').innerHTML=profileHTML(p,uid===currentUser.uid);bindProfileButtons();openPage('profilePage')}
-function profileHTML(p,isOwn=false){return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}</h1><p>@${esc(p.username||'')}</p></div><div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button>`}</div></div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-info"><div class="card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${esc(p.relationship||'Não informado')}</div></div><div class="card"><h3>Publicações</h3><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div></div>`}
-function bindProfileButtons(){const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid);if(edit)edit.onclick=openProfileEditor;loadProfilePosts()}
+function profileHTML(p,isOwn=false){return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}${isOwn?`<button class="profile-photo-action profile-cover-action" id="profileCoverAction" title="Trocar foto de capa" aria-label="Trocar foto de capa">📷</button>`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-wrap"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div>${isOwn?`<button class="profile-photo-action profile-avatar-action" id="profilePhotoAction" title="Trocar foto de perfil" aria-label="Trocar foto de perfil">📷</button>`:''}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}${roleBadge(p.adminRole)}</h1><p>@${esc(p.username||'')}</p></div><div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button>`}</div></div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-info"><div class="card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${esc(p.relationship||'Não informado')}</div></div><div class="card"><h3>Publicações</h3><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div></div>`}
+function bindProfileButtons(){const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid);if(edit)edit.onclick=openProfileEditor;const pf=$('editProfilePhoto'),cf=$('editProfileCover');const pa=$('profilePhotoAction'),ca=$('profileCoverAction');if(pa&&pf){pa.onclick=()=>pf.click();pf.onchange=()=>saveProfileEdit();}if(ca&&cf){ca.onclick=()=>cf.click();cf.onchange=()=>saveProfileEdit();}loadProfilePosts()}
 async function loadProfilePosts(){const holder=$('profilePosts');if(!holder)return;const s=await db.ref('posts').orderByChild('uid').equalTo($('profileAddFriend')?.dataset.uid||currentUser.uid).once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));holder.innerHTML=a.length?a.slice(0,10).map(p=>`<div class="profile-post"><strong>${esc(p.text||'Publicação com mídia')}</strong>${p.imageURL?`<img src="${esc(p.imageURL)}">`:''}</div>`).join(''):'<p class="muted">Nenhuma publicação ainda.</p>'}
 function openProfileEditor(){const p=currentProfile||{};$('profileEditPanel').classList.add('open');$('editProfileName').value=p.displayName||currentUser.displayName||'';$('editProfileUsername').value=p.username||'';$('editProfileBio').value=p.bio||'';$('editProfileLocation').value=p.location||'';$('editProfileRelationship').value=p.relationship||''}
 async function saveProfileEdit(){const b=$('saveProfileEdit');b.disabled=true;try{const uid=currentUser.uid,data={displayName:$('editProfileName').value.trim(),username:$('editProfileUsername').value.trim().replace(/^@/,''),bio:$('editProfileBio').value.trim(),location:$('editProfileLocation').value.trim(),relationship:$('editProfileRelationship').value,updatedAt:firebase.database.ServerValue.TIMESTAMP};const pf=$('editProfilePhoto').files[0],cf=$('editProfileCover').files[0];if(pf){const r=storage.ref('profilePhotos/'+uid+'/profile');await r.put(pf);data.photoURL=await r.getDownloadURL()}if(cf){const r=storage.ref('coverPhotos/'+uid+'/cover');await r.put(cf);data.coverURL=await r.getDownloadURL()}await db.ref('profiles/'+uid).update(data);await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});currentProfile=await getProfile(uid);$('profileEditPanel').classList.remove('open');renderOwnProfile();$('topAvatar').outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');$('composerAvatar').outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"')}catch(e){msg($('profileEditMsg'),firebaseMessage(e))}finally{b.disabled=false}}
@@ -56,7 +136,7 @@ async function loadChatFriends(){const bar=$('chatFriendsBar');if(!bar)return;co
 async function openChat(uid){if(!uid||uid===currentUser.uid)return;activeChatUid=uid;const p=await getProfile(uid);$('chatName').textContent=p.displayName||'Usuário';$('chatStatus').textContent='@'+(p.username||'');const old=$('chatAvatar');if(old)old.outerHTML=avatar(p.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="chatAvatar" class="mini-avatar"');$('messageDock').classList.remove('hidden');const key=[currentUser.uid,uid].sort().join('_');if(activeChatRef)activeChatRef.off();activeChatRef=db.ref('messages/'+key);activeChatRef.on('value',s=>{const a=[];s.forEach(x=>a.push(x.val()));a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0));$('chatMessages').innerHTML=a.map(x=>`<div class="bubble ${x.uid===currentUser.uid?'mine':''}">${esc(x.text)}</div>`).join('');$('chatMessages').scrollTop=$('chatMessages').scrollHeight})}
 function bindChat(){$('openChatBar').onclick=()=>{$('chatFriendsBar').classList.toggle('hidden');loadChatFriends()};$('closeChat').onclick=()=>{$('messageDock').classList.add('hidden');if(activeChatRef)activeChatRef.off();activeChatRef=null};$('chatForm').addEventListener('submit',async e=>{e.preventDefault();const t=$('chatText').value.trim();if(!t||!activeChatUid)return;const key=[currentUser.uid,activeChatUid].sort().join('_');await db.ref('messages/'+key).push({uid:currentUser.uid,text:t,createdAt:firebase.database.ServerValue.TIMESTAMP});$('chatText').value=''})}
 document.addEventListener('click',e=>{if(e.target.closest('#saveProfileEdit'))saveProfileEdit();if(e.target.closest('#cancelProfileEdit'))$('profileEditPanel').classList.remove('open')});
-document.addEventListener('DOMContentLoaded',()=>{bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindPrivacy();bindDiscover();if(initFirebase())auth.onAuthStateChanged(u=>{if(u)checkAfterLogin(u);else show('home')});else $('loginMsg').textContent='Firebase não foi carregado.'});
+document.addEventListener('DOMContentLoaded',()=>{bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindPrivacy();bindDiscover();if($('adminRoleForm'))$('adminRoleForm').addEventListener('submit',addAdminRole);if(initFirebase())auth.onAuthStateChanged(u=>{if(u)checkAfterLogin(u);else show('home')});else $('loginMsg').textContent='Firebase não foi carregado.'});
 })();
 
 /* Garantia: nunca abrir o modal de grupo automaticamente ao carregar/trocar de página. */

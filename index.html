@@ -17,7 +17,7 @@
 
 <section id="dashboard" class="dashboard hidden"><div id="mobileOverlay" class="mobile-overlay hidden"></div><aside id="sidebar"><div class="side-brand"><div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div><button id="mobileClose" class="icon-btn">×</button></div><nav id="mainNav"><button data-page="homePage" class="active">⌂ <span>Início</span></button><button data-page="profilePage">◎ <span>Meu perfil</span></button><button data-page="friendsPage">♢ <span>Amigos</span></button>
 
-<button data-page="groupsPage">◈ <span>Grupos</span></button><button data-page="notificationsPage">♧ <span>Notificações</span></button><button data-page="discoverPage">⌕ <span>Descobrir</span></button><button data-page="privacyPage">⚿ <span>Privacidade</span></button><button data-page="settingsPage">⚙ <span>Configurações</span></button></nav><button id="logout" class="logout">↪ <span>Sair</span></button></aside>
+<button data-page="groupsPage">◈ <span>Grupos</span></button><button data-page="notificationsPage">♧ <span>Notificações</span></button><button data-page="discoverPage">⌕ <span>Descobrir</span></button><button data-page="privacyPage">⚿ <span>Privacidade</span></button><button data-page="settingsPage">⚙ <span>Configurações</span></button></nav><button id="adminNavItem" class="admin-nav-item hidden" data-page="adminPage">🛡 <span>Painel administrativo</span></button><button id="logout" class="logout">↪ <span>Sair</span></button></aside>
 <div class="dash-main"><header class="topbar"><button id="mobileMenu" class="mobile-menu">☰</button><div class="search-top">⌕ <input id="globalSearch" placeholder="Pesquisar no Eclipse"></div><div class="top-actions"><button class="top-icon" data-page="notificationsPage">♧</button><button id="topProfile" class="top-profile"><span id="topAvatar" class="mini-avatar">☾</span><span id="welcome"></span></button><button id="logoutTop" class="top-exit">Sair</button></div></header>
 <div id="homePage" class="dash-page"><div class="feed-layout"><main class="feed-column"><section class="composer card"><div class="composer-row"><span id="composerAvatar" class="avatar">☾</span><button id="thinkingBtn" class="thinking">O que você está pensando?</button></div><div class="composer-actions"><button id="createStoryBtn">＋ Criar story</button><button id="composerPhotoBtn">▧ Foto/vídeo</button></div></section><section class="stories card"><div class="section-head"><h3>Stories</h3><span>dos seus amigos</span></div><div id="storiesList" class="stories-list"></div></section><section id="feedList" class="feed-list"></section></main><aside class="right-column"><section class="card mini-profile" id="homeMiniProfile"></section><section class="card"><h3>Sugestões</h3><div id="suggestionsList" class="suggestions-list"><p class="muted">Encontre pessoas no Descobrir.</p></div></section></aside></div></div>
 <div id="profilePage" class="dash-page hidden"><div id="publicProfile" class="facebook-profile"></div><div class="profile-edit-panel" id="profileEditPanel"><div class="profile-edit-grid"><div><label>Nome</label><input id="editProfileName" type="text"></div><div><label>Username</label><input id="editProfileUsername" type="text"></div><div class="full"><label>Biografia</label><textarea id="editProfileBio"></textarea></div><div><label>Onde mora</label><input id="editProfileLocation" type="text"></div><div><label>Relacionamento</label><select id="editProfileRelationship"><option value="">Prefiro não informar</option><option>Solteiro(a)</option><option>Em um relacionamento</option><option>Noivo(a)</option><option>Casado(a)</option><option>Complicado</option></select></div><div><label>Foto de perfil</label><input id="editProfilePhoto" type="file" accept="image/png,image/jpeg,image/webp"></div><div><label>Foto de capa</label><input id="editProfileCover" type="file" accept="image/png,image/jpeg,image/webp"></div></div><div class="profile-edit-actions"><button class="profile-edit-btn" id="cancelProfileEdit">Cancelar</button><button class="primary" id="saveProfileEdit">Salvar alterações</button></div><div id="profileEditMsg" class="message"></div></div></div>
@@ -26,6 +26,53 @@
 <div id="notificationsPage" class="dash-page hidden"><div class="panel"><h2>Notificações</h2><div id="notificationsList" class="list"><p class="muted">Carregando...</p></div></div></div>
 <div id="discoverPage" class="dash-page hidden"><div class="panel"><h2>Descobrir</h2><div class="discover-search"><input id="discoverInput" placeholder="Pesquisar nome ou username"><button id="discoverBtn" class="primary">Pesquisar</button></div><div id="discoverResults" class="list"></div></div></div>
 <div id="privacyPage" class="dash-page hidden"><div class="panel"><h2>Checkup de Privacidade</h2><p class="muted">Controle quem pode encontrar você e acessar seu conteúdo.</p><form id="privacyForm"><label>Quem pode ver sua lista de amigos<select id="privacyFriends"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label><label>Quem pode encontrar você<select id="privacyFind"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label><label>Receber solicitações de amizade<select id="privacyRequests"><option value="yes">Sim</option><option value="no">Não</option></select></label><button class="primary" type="submit">Salvar privacidade</button><div id="privacyMsg" class="message"></div></form></div></div>
+
+<div id="adminPage" class="dash-page hidden">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <div>
+        <span class="admin-eyebrow">CONTROLE DO ECLIPSE</span>
+        <h2>Painel administrativo</h2>
+        <p class="muted">Gerencie administradores e moderadores da rede social.</p>
+      </div>
+      <span id="myAdminBadge" class="role-badge role-admin">🛡 Administrador</span>
+    </div>
+
+    <div class="admin-grid">
+      <div class="card admin-card">
+        <h3>Adicionar cargo</h3>
+        <p class="muted">Informe o username da pessoa e escolha o cargo.</p>
+        <form id="adminRoleForm">
+          <label>Username
+            <input id="adminTargetUsername" placeholder="@username" required>
+          </label>
+          <label>Cargo
+            <select id="adminTargetRole">
+              <option value="moderator">🛡 Moderador</option>
+              <option value="admin">🛡 Administrador</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Adicionar cargo</button>
+          <div id="adminRoleMsg" class="message"></div>
+        </form>
+      </div>
+
+      <div class="card admin-card">
+        <h3>Equipe do site</h3>
+        <p class="muted">Administradores e moderadores com brasão visível nos perfis e publicações.</p>
+        <div id="adminTeamList" class="list"><p class="muted">Carregando...</p></div>
+      </div>
+    </div>
+
+    <div class="card admin-card">
+      <h3>Permissões</h3>
+      <div class="admin-permission-list">
+        <div><span>🛡</span><div><strong>Administrador</strong><small>Gerencia a equipe administrativa e a moderação.</small></div></div>
+        <div><span>🛡</span><div><strong>Moderador</strong><small>Identificação oficial da equipe de moderação.</small></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="settingsPage" class="dash-page hidden"><div class="panel"><h2>Configurações</h2><p class="muted">Configurações da sua conta.</p></div></div>
 </div></section>
 </div>

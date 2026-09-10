@@ -235,3 +235,149 @@ button,
 #createGroupModal.is-open{
   display:grid !important;
 }
+
+/* =========================================================
+   ECLIPSE — FUNDO GLOBAL UNIFICADO
+   O mesmo fundo visual da página inicial é usado em todo o site.
+   ========================================================= */
+:root{
+  --eclipse-global-bg:
+    radial-gradient(circle at 65% 40%,#171345 0,#0a0b20 42%,#060713 100%);
+}
+
+/* Fundo base */
+html,
+body{
+  min-height:100%;
+  background:var(--eclipse-global-bg) !important;
+}
+
+/* Todas as telas principais */
+.landing,
+.auth-screen,
+.setup-screen,
+.dashboard,
+.dash-main,
+.dash-page,
+.profile-page,
+.feed-page,
+.messages-page,
+.groups-page,
+.discover-page{
+  background:var(--eclipse-global-bg) !important;
+}
+
+/* Evita que containers internos criem uma segunda camada de fundo */
+.dashboard{
+  color:#eef0ff !important;
+}
+.dash-main{
+  color:#eef0ff !important;
+}
+.dash-page{
+  min-height:calc(100vh - 64px);
+}
+
+/* Perfil: somente capa mantém sua própria imagem/gradiente;
+   o restante da página usa o fundo global */
+.profile-page .profile-main,
+.profile-page .profile-info,
+.profile-page .profile-content,
+.profile-page .profile-body{
+  background:transparent !important;
+}
+
+/* Cards permanecem destacados, mas sem alterar o fundo geral */
+.profile-page .card,
+.profile-page .panel,
+.profile-page .profile-card,
+.profile-page .info-card{
+  background:rgba(15,17,39,.96) !important;
+}
+
+/* Barras e áreas de navegação continuam integradas ao tema */
+.topbar{
+  background:rgba(6,7,19,.88) !important;
+}
+.dashboard aside{
+  background:rgba(11,13,32,.96) !important;
+}
+
+/* Remover fundos claros herdados de versões anteriores */
+.dashboard,
+.profile-edit-panel,
+.profile-post,
+.profile-nav{
+  color:#eef0ff !important;
+}
+.profile-edit-panel{
+  background:rgba(15,17,39,.96) !important;
+  border-color:#292d50 !important;
+}
+.profile-nav{
+  border-top-color:rgba(255,255,255,.08) !important;
+}
+.profile-nav button{
+  color:#aeb3d0 !important;
+}
+
+/* === Cargos administrativos === */
+.admin-nav-item{
+  width:100%;text-align:left;background:transparent;color:#c9b9ff;
+  padding:12px 13px;border-radius:11px;font-weight:700;margin-top:6px;
+}
+.admin-nav-item:hover{background:#1a1d39;color:#fff;}
+.admin-panel{max-width:1100px;margin:0 auto;}
+.admin-header{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:4px 0 22px;
+}
+.admin-eyebrow{font-size:11px;letter-spacing:.14em;color:#8f7be8;font-weight:800;}
+.admin-header h2{margin:5px 0;font-size:30px;}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.admin-card{padding:20px;}
+.admin-card form{display:flex;flex-direction:column;gap:12px;}
+.admin-card label{display:flex;flex-direction:column;gap:7px;color:#c9cce0;font-weight:600;font-size:13px;}
+.admin-card input,.admin-card select{
+  background:#090b1b;color:#fff;border:1px solid #292d50;border-radius:10px;padding:12px;
+}
+.admin-permission-list{display:grid;gap:12px;}
+.admin-permission-list>div{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#0b0d20;border:1px solid #292d50;}
+.admin-permission-list>div>span{font-size:20px;}
+.admin-permission-list strong{display:block;color:#fff;}
+.admin-permission-list small{color:#8f96b5;}
+.role-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;
+  vertical-align:middle;white-space:nowrap;
+}
+.role-admin{background:rgba(124,58,237,.20);color:#cbb9ff;border:1px solid rgba(139,92,246,.35);}
+.role-moderator{background:rgba(37,99,235,.18);color:#a9c7ff;border:1px solid rgba(59,130,246,.30);}
+.role-badge-inline{margin-left:5px;}
+.admin-team-person{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.admin-team-person:last-child{border-bottom:0;}
+.admin-team-person .person-main{display:flex;align-items:center;gap:10px;}
+.admin-team-actions{display:flex;gap:6px;}
+.admin-team-actions button{font-size:12px;padding:7px 9px;}
+/* Ícones de fotografia no perfil */
+.profile-photo-action{
+  position:absolute;width:36px;height:36px;border-radius:50%;
+  border:3px solid #0f1127;background:#202442;color:#fff;
+  display:grid;place-items:center;cursor:pointer;z-index:4;
+  box-shadow:0 5px 16px rgba(0,0,0,.35);
+}
+.profile-photo-action:hover{background:#2d3359;transform:scale(1.04);}
+.profile-avatar-wrap{position:relative;width:150px;height:150px;}
+.profile-avatar-wrap .profile-avatar-large{width:150px;height:150px;}
+.profile-avatar-action{right:3px;bottom:3px;}
+.profile-cover{position:relative;}
+.profile-cover-action{right:18px;bottom:18px;}
+.profile-photo-input{display:none !important;}
+@media(max-width:850px){
+ .admin-grid{grid-template-columns:1fr;}
+ .admin-header{align-items:flex-start;flex-direction:column;}
+ .profile-avatar-wrap{width:120px;height:120px;}
+ .profile-avatar-wrap .profile-avatar-large{width:120px;height:120px;}
+}
+
+#editProfilePhoto,#editProfileCover{display:none !important;}
