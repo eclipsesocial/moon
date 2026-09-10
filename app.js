@@ -1,215 +1,44 @@
-/* Eclipse — HTML/CSS/JS puro. */
-(function () {
-  "use strict";
-
-  const firebaseConfig = {
-  apiKey: "AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7fZ_g",
-  authDomain: "projetoeclipse-2374b.firebaseapp.com",
-  databaseURL: "https://projetoeclipse-2374b-default-rtdb.firebaseio.com",
-  projectId: "projetoeclipse-2374b",
-  storageBucket: "projetoeclipse-2374b.firebasestorage.app",
-  messagingSenderId: "460740273909",
-  appId: "1:460740273909:web:fb081ae806b15802a0c7bc",
-  measurementId: "G-0806KRDLS2"
-};
-
-  let auth = null, db = null, storage = null, currentUser = null;
-  let setupStep = 1, profilePhotoFile = null, coverPhotoFile = null;
-
-  function $(id){ return document.getElementById(id); }
-  function show(id){
-    document.querySelectorAll(".landing,.auth-screen,.setup-screen,.dashboard").forEach(x=>x.classList.add("hidden"));
-    const el = id==="home" ? document.querySelector(".landing") : $(id);
-    if(el) el.classList.remove("hidden");
-    window.scrollTo(0,0);
-  }
-
-  function bindScreenButtons(){
-    document.querySelectorAll("[data-screen]").forEach(btn=>{
-      btn.addEventListener("click", function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        show(this.getAttribute("data-screen"));
-      });
-    });
-  }
-
-  function firebaseMessage(err){
-    const code=err && err.code || "";
-    const map={
-      "auth/email-already-in-use":"Este e-mail já está cadastrado.",
-      "auth/invalid-email":"Digite um e-mail válido.",
-      "auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.",
-      "auth/invalid-credential":"E-mail ou senha incorretos.",
-      "auth/user-not-found":"E-mail ou senha incorretos.",
-      "auth/network-request-failed":"Falha de conexão com o Firebase."
-    };
-    return map[code] || ("Erro Firebase: "+(code || err.message || "operação não concluída"));
-  }
-
-  function setupFirebase(){
-    if(typeof firebase==="undefined") return false;
-    try{
-      if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      auth=firebase.auth();
-      db=firebase.database();
-      storage=firebase.storage();
-      return true;
-    }catch(e){
-      console.error(e); return false;
-    }
-  }
-
-  function openDashboard(user){
-    currentUser=user;
-    show("dashboard");
-    $("welcome").textContent=user.displayName ? "Olá, "+user.displayName : "Olá!";
-  }
-
-  async function checkAfterLogin(user){
-    try{
-      const snap=await db.ref("profiles/"+user.uid).once("value");
-      const p=snap.val()||{};
-      if(p.setupCompleted===true){ openDashboard(user); }
-      else { openSetup(user); }
-    }catch(e){
-      console.error(e);
-      openDashboard(user);
-    }
-  }
-
-  function openSetup(user){
-    currentUser=user; setupStep=1; profilePhotoFile=null; coverPhotoFile=null;
-    $("setupBio").value=""; $("setupRelationship").value="";
-    $("profilePhoto").value=""; $("coverPhoto").value="";
-    $("profilePreview").innerHTML="<span>☾</span>";
-    $("coverPreview").innerHTML="<span>Foto de capa</span>";
-    showSetupStep(); show("profileSetup");
-  }
-
-  function showSetupStep(){
-    document.querySelectorAll(".setup-page").forEach(p=>p.classList.toggle("hidden", Number(p.dataset.step)!==setupStep));
-    $("setupStep").textContent=setupStep+" de 4";
-    $("setupProgress").style.width=(setupStep*25)+"%";
-    const titles=["Vamos montar seu perfil.","Escolha sua foto de perfil.","Agora escolha sua foto de capa.","Como está seu relacionamento?"];
-    const desc=["Comece contando um pouco sobre você ou sobre sua personagem.","Essa será a imagem principal do seu perfil.","Sua capa ficará no topo da página do seu perfil.","Você poderá alterar essa informação depois."];
-    $("setupTitle").textContent=titles[setupStep-1];
-    $("setupDescription").textContent=desc[setupStep-1];
-    $("setupBack").style.visibility=setupStep===1?"hidden":"visible";
-    $("setupNext").textContent=setupStep===4?"Concluir perfil":"Continuar";
-  }
-
-  async function finishSetup(){
-    if(!currentUser || !db) return;
-    const btn=$("setupNext"), msg=$("setupMessage");
-    btn.disabled=true; btn.textContent="Salvando...";
-    try{
-      const uid=currentUser.uid;
-      const data={
-        bio:$("setupBio").value.trim(),
-        relationship:$("setupRelationship").value,
-        setupCompleted:true,
-        updatedAt:firebase.database.ServerValue.TIMESTAMP
-      };
-      if(profilePhotoFile){
-        const r=storage.ref("profilePhotos/"+uid+"/profile");
-        await r.put(profilePhotoFile);
-        data.photoURL=await r.getDownloadURL();
-      }
-      if(coverPhotoFile){
-        const r=storage.ref("coverPhotos/"+uid+"/cover");
-        await r.put(coverPhotoFile);
-        data.coverURL=await r.getDownloadURL();
-      }
-      await db.ref("profiles/"+uid).update(data);
-      btn.disabled=false;
-      openDashboard(currentUser);
-    }catch(e){
-      btn.disabled=false; btn.textContent="Concluir perfil";
-      msg.textContent=firebaseMessage(e);
-    }
-  }
-
-  function bindAuth(){
-    $("loginForm").addEventListener("submit", async e=>{
-      e.preventDefault();
-      const msg=$("loginMsg"); msg.textContent="";
-      if(!auth){msg.textContent="Firebase não foi carregado. Recarregue a página.";return;}
-      try{
-        await auth.signInWithEmailAndPassword($("loginEmail").value.trim(),$("loginPassword").value);
-      }catch(err){msg.textContent=firebaseMessage(err);}
-    });
-
-    $("registerForm").addEventListener("submit", async e=>{
-      e.preventDefault();
-      const msg=$("registerMsg"); msg.textContent="";
-      if(!auth){msg.textContent="Firebase não foi carregado. Recarregue a página.";return;}
-      const pass=$("regPassword").value, confirm=$("regConfirm").value;
-      if(pass!==confirm){msg.textContent="As senhas não são iguais.";return;}
-      try{
-        const c=await auth.createUserWithEmailAndPassword($("regEmail").value.trim().toLowerCase(),pass);
-        await c.user.updateProfile({displayName:$("regName").value.trim()});
-        const uid=c.user.uid;
-        await db.ref("users/"+uid).set({
-          uid:uid,name:$("regName").value.trim(),
-          username:$("regUsername").value.trim().replace(/^@/,"").toLowerCase(),
-          createdAt:firebase.database.ServerValue.TIMESTAMP
-        });
-        await db.ref("profiles/"+uid).set({
-          uid:uid,displayName:$("regName").value.trim(),
-          username:$("regUsername").value.trim().replace(/^@/,"").toLowerCase(),
-          birthDate:$("regBirth").value, bio:"",location:"",
-          relationship:"",photoURL:"",coverURL:"",
-          setupCompleted:false,createdAt:firebase.database.ServerValue.TIMESTAMP
-        });
-        // onAuthStateChanged abre a configuração.
-      }catch(err){msg.textContent=firebaseMessage(err);}
-    });
-  }
-
-  function bindSetup(){
-    $("setupBio").addEventListener("input",()=>{$("bioCount").textContent=$("setupBio").value.length;});
-    $("profilePhoto").addEventListener("change",e=>{
-      profilePhotoFile=e.target.files[0]||null;
-      if(profilePhotoFile) $("profilePreview").innerHTML='<img src="'+URL.createObjectURL(profilePhotoFile)+'" alt="Prévia">';
-    });
-    $("coverPhoto").addEventListener("change",e=>{
-      coverPhotoFile=e.target.files[0]||null;
-      if(coverPhotoFile) $("coverPreview").innerHTML='<img src="'+URL.createObjectURL(coverPhotoFile)+'" alt="Prévia">';
-    });
-    $("setupBack").addEventListener("click",()=>{if(setupStep>1){setupStep--;showSetupStep();}});
-    $("setupNext").addEventListener("click",()=>{if(setupStep<4){setupStep++;showSetupStep();}else finishSetup();});
-  }
-
-  function bindDashboard(){
-    document.querySelectorAll("#mainNav [data-page]").forEach(btn=>{
-      btn.addEventListener("click",function(){
-        document.querySelectorAll(".dash-page").forEach(p=>p.classList.add("hidden"));
-        const page=$(this.dataset.page); if(page)page.classList.remove("hidden");
-        document.querySelectorAll("#mainNav [data-page]").forEach(x=>x.classList.remove("active"));
-        this.classList.add("active");
-      });
-    });
-    const logout=()=>auth && auth.signOut();
-    $("logout").addEventListener("click",logout);
-    $("logoutTop").addEventListener("click",logout);
-  }
-
-  document.addEventListener("DOMContentLoaded",function(){
-    bindScreenButtons();
-    bindAuth();
-    bindSetup();
-    bindDashboard();
-    setupFirebase();
-
-    if(auth){
-      auth.onAuthStateChanged(user=>{
-        if(user) checkAfterLogin(user);
-        else show("home");
-      });
-    }else{
-      show("home");
-      $("loginMsg").textContent="Firebase não foi carregado.";
-    }
-  });
+(function(){'use strict';
+const firebaseConfig={apiKey:"AIzaSyDhWlhYXPh34BuOf-kPYbGgYKVFew7fZ_g",authDomain:"projetoeclipse-2374b.firebaseapp.com",databaseURL:"https://projetoeclipse-2374b-default-rtdb.firebaseio.com",projectId:"projetoeclipse-2374b",storageBucket:"projetoeclipse-2374b.firebasestorage.app",messagingSenderId:"460740273909",appId:"1:460740273909:web:fb081ae806b15802a0c7bc",measurementId:"G-0806KRDLS2"};
+let auth,db,storage,currentUser=null,currentProfile=null,setupStep=1,profilePhotoFile=null,coverPhotoFile=null,activeChatUid=null,activeChatRef=null;
+const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+function show(id){document.querySelectorAll('.landing,.auth-screen,.setup-screen,.dashboard').forEach(x=>x.classList.add('hidden'));const el=id==='home'?document.querySelector('.landing'):$(id);if(el)el.classList.remove('hidden');scrollTo(0,0)}
+function msg(el,text){if(el)el.textContent=text||''}
+function firebaseMessage(e){const m={'auth/email-already-in-use':'Este e-mail já está cadastrado.','auth/invalid-email':'Digite um e-mail válido.','auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.','auth/invalid-credential':'E-mail ou senha incorretos.','auth/user-not-found':'E-mail ou senha incorretos.','auth/network-request-failed':'Falha de conexão com o Firebase.'};return m[e?.code]||('Erro Firebase: '+(e?.message||'operação não concluída'))}
+function initFirebase(){if(!window.firebase)return false;try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.database();storage=firebase.storage();return true}catch(e){console.error(e);return false}}
+function avatar(url,cls='avatar'){return url?`<span class="${cls}"><img src="${esc(url)}"></span>`:`<span class="${cls}">☾</span>`}
+async function getProfile(uid){const s=await db.ref('profiles/'+uid).once('value');return s.val()||{uid}}
+function bindNavigation(){document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();show(b.dataset.screen)}));document.querySelectorAll('#mainNav [data-page],.top-icon').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));$('topProfile').addEventListener('click',()=>openPage('profilePage'));$('mobileMenu').addEventListener('click',()=>{ $('sidebar').classList.add('open');$('mobileOverlay').classList.remove('hidden')});$('mobileClose').addEventListener('click',closeMobile);$('mobileOverlay').addEventListener('click',closeMobile)}
+function closeMobile(){$('sidebar').classList.remove('open');$('mobileOverlay').classList.add('hidden')}
+function openPage(id){document.querySelectorAll('.dash-page').forEach(p=>p.classList.add('hidden'));$(id)?.classList.remove('hidden');document.querySelectorAll('#mainNav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));closeMobile();if(id==='profilePage')renderOwnProfile();if(id==='friendsPage')loadFriends();if(id==='notificationsPage')loadNotifications()}
+function openDashboard(u){currentUser=u;$('welcome').textContent=u.displayName||'Meu perfil';$('topAvatar').outerHTML=avatar(currentProfile?.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');$('composerAvatar').outerHTML=avatar(currentProfile?.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"');show('dashboard');loadHome()}
+async function checkAfterLogin(u){try{currentProfile=await getProfile(u.uid);if(currentProfile.setupCompleted===true)openDashboard(u);else openSetup(u)}catch(e){console.error(e);openDashboard(u)}}
+function bindAuth(){$('loginForm').addEventListener('submit',async e=>{e.preventDefault();msg($('loginMsg'),'');try{await auth.signInWithEmailAndPassword($('loginEmail').value.trim(),$('loginPassword').value)}catch(err){msg($('loginMsg'),firebaseMessage(err))}});$('registerForm').addEventListener('submit',async e=>{e.preventDefault();msg($('registerMsg'),'');const p=$('regPassword').value;if(p!==$('regConfirm').value){msg($('registerMsg'),'As senhas não são iguais.');return}try{const c=await auth.createUserWithEmailAndPassword($('regEmail').value.trim().toLowerCase(),p);await c.user.updateProfile({displayName:$('regName').value.trim()});const uid=c.user.uid;const username=$('regUsername').value.trim().replace(/^@/,'').toLowerCase();await db.ref('users/'+uid).set({uid,name:$('regName').value.trim(),username,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('profiles/'+uid).set({uid,displayName:$('regName').value.trim(),username,birthDate:$('regBirth').value,bio:'',location:'',relationship:'',photoURL:'',coverURL:'',setupCompleted:false,createdAt:firebase.database.ServerValue.TIMESTAMP});}catch(err){msg($('registerMsg'),firebaseMessage(err))}})}
+function openSetup(u){currentUser=u;setupStep=1;profilePhotoFile=null;coverPhotoFile=null;$('setupBio').value='';$('setupRelationship').value='';$('profilePhoto').value='';$('coverPhoto').value='';$('profilePreview').innerHTML='<span>☾</span>';$('coverPreview').innerHTML='<span>Foto de capa</span>';showSetupStep();show('profileSetup')}
+function showSetupStep(){document.querySelectorAll('.setup-page').forEach(x=>x.classList.toggle('hidden',+x.dataset.step!==setupStep));$('setupStep').textContent=setupStep+' de 4';$('setupProgress').style.width=setupStep*25+'%';const t=['Vamos montar seu perfil.','Escolha sua foto de perfil.','Agora escolha sua foto de capa.','Como está seu relacionamento?'];const d=['Comece contando um pouco sobre você ou sobre sua personagem.','Essa será a imagem principal do seu perfil.','Sua capa ficará no topo da página do seu perfil.','Você poderá alterar essa informação depois.'];$('setupTitle').textContent=t[setupStep-1];$('setupDescription').textContent=d[setupStep-1];$('setupBack').style.visibility=setupStep===1?'hidden':'visible';$('setupNext').textContent=setupStep===4?'Concluir perfil':'Continuar'}
+function bindSetup(){$('setupBio').addEventListener('input',()=>$('bioCount').textContent=$('setupBio').value.length);$('profilePhoto').addEventListener('change',e=>{profilePhotoFile=e.target.files[0]||null;if(profilePhotoFile)$('profilePreview').innerHTML=`<img src="${URL.createObjectURL(profilePhotoFile)}">`});$('coverPhoto').addEventListener('change',e=>{coverPhotoFile=e.target.files[0]||null;if(coverPhotoFile)$('coverPreview').innerHTML=`<img src="${URL.createObjectURL(coverPhotoFile)}">`});$('setupBack').addEventListener('click',()=>{if(setupStep>1){setupStep--;showSetupStep()}});$('setupNext').addEventListener('click',finishOrNext)}
+async function finishOrNext(){if(setupStep<4){setupStep++;showSetupStep();return}const b=$('setupNext');b.disabled=true;b.textContent='Salvando...';try{const uid=currentUser.uid,data={bio:$('setupBio').value.trim(),relationship:$('setupRelationship').value,setupCompleted:true,updatedAt:firebase.database.ServerValue.TIMESTAMP};if(profilePhotoFile){const r=storage.ref('profilePhotos/'+uid+'/profile');await r.put(profilePhotoFile);data.photoURL=await r.getDownloadURL()}if(coverPhotoFile){const r=storage.ref('coverPhotos/'+uid+'/cover');await r.put(coverPhotoFile);data.coverURL=await r.getDownloadURL()}await db.ref('profiles/'+uid).update(data);currentProfile=await getProfile(uid);openDashboard(currentUser)}catch(e){msg($('setupMessage'),firebaseMessage(e));b.disabled=false;b.textContent='Concluir perfil'}}
+async function loadHome(){renderMiniProfile();await loadFeed();await loadStories();await loadSuggestions()}
+function renderMiniProfile(){$('homeMiniProfile').innerHTML=`${avatar(currentProfile?.photoURL,'avatar')}<div><strong>${esc(currentProfile?.displayName||currentUser.displayName||'Perfil')}</strong><small>@${esc(currentProfile?.username||'')}</small></div>`}
+async function loadFeed(){const s=await db.ref('posts').orderByChild('createdAt').limitToLast(30).once('value');const arr=[];s.forEach(x=>arr.push({id:x.key,...x.val()}));arr.reverse();if(!arr.length){$('feedList').innerHTML='<div class="card post"><p class="muted">Seu feed ainda está vazio. Comece publicando algo.</p></div>';return}const profiles={};for(const p of arr.slice(0,15)){if(!profiles[p.uid])profiles[p.uid]=await getProfile(p.uid)}$('feedList').innerHTML=arr.map(p=>{const pr=profiles[p.uid]||{};return `<article class="card post"><div class="post-head">${avatar(pr.photoURL,'mini-avatar')}<div><strong>${esc(pr.displayName||'Usuário')}</strong><small>${p.createdAt?new Date(p.createdAt).toLocaleString('pt-BR'):''}</small></div></div>${p.text?`<div class="post-text">${esc(p.text)}</div>`:''}${p.imageURL?`<img class="post-image" src="${esc(p.imageURL)}">`:''}<div class="post-actions"><button>♡ Curtir</button><button data-open-comments="${p.id}">◯ Comentar</button><button data-share-post="${p.id}">↗ Compartilhar</button></div></article>`}).join('')}
+async function loadStories(){const s=await db.ref('statuses').orderByChild('createdAt').limitToLast(20).once('value');const arr=[];s.forEach(x=>arr.push({id:x.key,...x.val()}));arr.reverse();$('storiesList').innerHTML=arr.length?arr.map(x=>`<div class="story-card">${x.imageURL?`<img src="${esc(x.imageURL)}">`:''}<div class="story-avatar">☾</div><strong>${esc(x.displayName||'Amigo')}</strong></div>`).join(''):`<div class="muted">Seus amigos ainda não publicaram stories.</div>`}
+async function loadSuggestions(){const s=await db.ref('profiles').limitToFirst(12).once('value');const arr=[];s.forEach(x=>{if(x.key!==currentUser.uid)arr.push({uid:x.key,...x.val()})});$('suggestionsList').innerHTML=arr.slice(0,5).map(x=>`<div class="suggestion"><div class="list-main">${avatar(x.photoURL,'mini-avatar')}<div><strong>${esc(x.displayName||'Usuário')}</strong><small>@${esc(x.username||'')}</small></div></div><button class="add-friend" data-add-friend="${x.uid}">Adicionar</button></div>`).join('')||'<p class="muted">Nenhuma sugestão encontrada.</p>';document.querySelectorAll('[data-add-friend]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.addFriend,b))}
+function bindFeed(){ $('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
+function openModal(id){$(id).classList.remove('hidden')}
+async function publishPost(){const text=$('postText').value.trim(),file=$('postImage').files[0];if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma imagem.');return}const b=$('publishBtn');b.disabled=true;try{let imageURL='';if(file){const r=storage.ref('posts/'+currentUser.uid+'/'+Date.now()+'_'+file.name);await r.put(file);imageURL=await r.getDownloadURL()}await db.ref('posts').push({uid:currentUser.uid,text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP});$('postText').value='';$('postImage').value='';$('postModal').classList.add('hidden');await loadFeed()}catch(e){msg($('postMsg'),firebaseMessage(e))}finally{b.disabled=false}}
+async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma imagem.');return}const b=$('publishStoryBtn');b.disabled=true;try{let imageURL='';if(file){const r=storage.ref('statuses/'+currentUser.uid+'/'+Date.now()+'_'+file.name);await r.put(file);imageURL=await r.getDownloadURL()}await db.ref('statuses').push({uid:currentUser.uid,displayName:currentUser.displayName||'Usuário',text,imageURL,createdAt:firebase.database.ServerValue.TIMESTAMP});$('storyText').value='';$('storyImage').value='';$('storyModal').classList.add('hidden');await loadStories()}catch(e){msg($('storyMsg'),firebaseMessage(e))}finally{b.disabled=false}}
+async function renderOwnProfile(){const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
+function profileHTML(p,isOwn=false){return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}</h1><p>@${esc(p.username||'')}</p></div>${!isOwn?`<div class="profile-buttons"><button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button></div>`:''}</div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-info"><div class="card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b>${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b>${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b>${esc(p.relationship||'Não informado')}</div></div><div class="card"><h3>Publicações</h3><p class="muted">As publicações deste perfil aparecerão aqui.</p></div></div></div>`}
+function bindProfileButtons(){const a=$('profileAddFriend'),m=$('profileMessage');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid)}
+async function sendFriendRequest(uid,button){if(!uid||uid===currentUser.uid)return;try{const privacy=(await db.ref('privacySettings/'+uid).once('value')).val()||{};if(privacy.requests==='no'){alert('Este perfil não está recebendo solicitações de amizade.');return}const existing=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(existing.exists()){button.textContent='Solicitação enviada';button.disabled=true;return}await db.ref('friendRequests/'+uid+'/'+currentUser.uid).set({uid:currentUser.uid,name:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('notifications/'+uid).push({type:'friend_request',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});button.textContent='Solicitação enviada';button.disabled=true}catch(e){alert(firebaseMessage(e))}}
+async function loadFriends(){const req=await db.ref('friendRequests/'+currentUser.uid).once('value');const r=[];req.forEach(x=>r.push({uid:x.key,...x.val()}));$('friendRequestsList').innerHTML=r.length?'<h3>Solicitações</h3>'+r.map(x=>`<div class="list-item"><div class="list-main">${avatar('','mini-avatar')}<div><strong>${esc(x.name||'Usuário')}</strong><small>Quer ser seu amigo.</small></div></div><button class="primary" data-accept="${x.uid}">Aceitar</button></div>`).join(''):'<p class="muted">Nenhuma solicitação de amizade.</p>';document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>acceptFriend(b.dataset.accept));const fs=await db.ref('friendships/'+currentUser.uid).once('value');const ids=[];fs.forEach(x=>ids.push(x.key));$('friendsList').innerHTML='<h3>Seus amigos</h3>'+ (ids.length?'<div class="list">'+(await Promise.all(ids.map(async id=>{const p=await getProfile(id);return `<div class="list-item"><div class="list-main">${avatar(p.photoURL,'mini-avatar')}<strong>${esc(p.displayName||'Usuário')}</strong></div><button class="secondary" data-message="${id}">Mensagem</button></div>`}))).join('')+'</div>':'<p class="muted">Você ainda não tem amigos.</p>');document.querySelectorAll('[data-message]').forEach(b=>b.onclick=()=>openChat(b.dataset.message))}
+async function acceptFriend(uid){const updates={};updates['friendships/'+currentUser.uid+'/'+uid]=true;updates['friendships/'+uid+'/'+currentUser.uid]=true;updates['friendRequests/'+currentUser.uid+'/'+uid]=null;await db.ref().update(updates);await db.ref('notifications/'+uid).push({type:'friend_accepted',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});loadFriends()}
+async function loadNotifications(){const s=await db.ref('notifications/'+currentUser.uid).orderByChild('createdAt').limitToLast(30).once('value');const a=[];s.forEach(x=>a.push(x.val()));a.reverse();$('notificationsList').innerHTML=a.length?a.map(x=>`<div class="list-item"><span>${esc(x.fromName||'Alguém')} ${x.type==='friend_request'?'enviou uma solicitação de amizade.':'interagiu com você.'}</span></div>`).join(''):'<p class="muted">Nenhuma notificação.</p>'}
+async function openChat(uid){activeChatUid=uid;const p=await getProfile(uid);$('chatName').textContent=p.displayName||'Usuário';$('chatStatus').textContent='@'+(p.username||'');$('chatAvatar').outerHTML=avatar(p.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="chatAvatar" class="mini-avatar"');$('messageDock').classList.remove('hidden');if(activeChatRef)activeChatRef.off();const key=[currentUser.uid,uid].sort().join('_');activeChatRef=db.ref('messages/'+key);activeChatRef.on('value',s=>{const a=[];s.forEach(x=>a.push(x.val()));$('chatMessages').innerHTML=a.map(x=>`<div class="bubble ${x.uid===currentUser.uid?'mine':''}">${esc(x.text)}</div>`).join('');$('chatMessages').scrollTop=$('chatMessages').scrollHeight})}
+function bindChat(){$('closeChat').onclick=()=>{$('messageDock').classList.add('hidden');if(activeChatRef)activeChatRef.off();activeChatRef=null};$('chatForm').addEventListener('submit',async e=>{e.preventDefault();const t=$('chatText').value.trim();if(!t||!activeChatUid)return;const key=[currentUser.uid,activeChatUid].sort().join('_');await db.ref('messages/'+key).push({uid:currentUser.uid,text:t,createdAt:firebase.database.ServerValue.TIMESTAMP});$('chatText').value=''})}
+function bindGroups(){$('groupForm').addEventListener('submit',async e=>{e.preventDefault();try{const ref=db.ref('groups').push();await ref.set({name:$('groupName').value.trim(),description:$('groupDescription').value.trim(),ownerUid:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('groupMembers/'+ref.key+'/'+currentUser.uid).set({role:'owner'});$('groupName').value='';$('groupDescription').value='';msg($('groupMsg'),'Grupo criado com sucesso.')}catch(err){msg($('groupMsg'),firebaseMessage(err))}})}
+function bindPrivacy(){$('privacyForm').addEventListener('submit',async e=>{e.preventDefault();try{await db.ref('privacySettings/'+currentUser.uid).set({friends:$('privacyFriends').value,find:$('privacyFind').value,requests:$('privacyRequests').value});msg($('privacyMsg'),'Privacidade salva.')}catch(err){msg($('privacyMsg'),firebaseMessage(err))}})}
+async function discover(){const q=$('discoverInput').value.trim().toLowerCase();const s=await db.ref('profiles').once('value');const a=[];s.forEach(x=>{const p=x.val()||{};if(x.key!==currentUser.uid&&(!q||(p.displayName||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q)))a.push({uid:x.key,...p})});$('discoverResults').innerHTML=a.map(p=>`<div class="list-item"><div class="list-main">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></div></div><div><button class="primary" data-view-profile="${p.uid}">Ver perfil</button><button class="secondary" data-discover-add="${p.uid}">Adicionar</button></div></div>`).join('')||'<p class="muted">Nenhum perfil encontrado.</p>';document.querySelectorAll('[data-view-profile]').forEach(b=>b.onclick=async()=>{const p=await getProfile(b.dataset.viewProfile);$('publicProfile').innerHTML=profileHTML(p,false);bindProfileButtons();openPage('profilePage')});document.querySelectorAll('[data-discover-add]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.discoverAdd,b))}
+function bindDiscover(){$('discoverBtn').onclick=discover;$('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){openPage('discoverPage');$('discoverInput').value=e.target.value;discover()}})}
+document.addEventListener('DOMContentLoaded',()=>{bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindPrivacy();bindDiscover();if(initFirebase())auth.onAuthStateChanged(u=>{if(u)checkAfterLogin(u);else show('home')});else{$('loginMsg').textContent='Firebase não foi carregado.'}});
 })();

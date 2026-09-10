@@ -1,214 +1,24 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070817">
-  <link rel="icon" href="eclipse.svg">
-  <title>Eclipse — Alpha 0.0.0</title>
-  <link rel="stylesheet" href="style.css?v=4">
-</head>
-<body>
-  <div id="app">
-    <main class="landing">
-      <div class="stars"></div>
-      <div class="glow glow-one"></div><div class="glow glow-two"></div>
-      <section class="hero">
-        <div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-        <div class="hero-copy">
-          <span class="eyebrow">ALPHA 0.0.0</span>
-          <h1>Onde sua <i>história</i><br>ganha vida.</h1>
-          <p>Uma rede social para quem cria personagens, identidades interpretativas e universos próprios.</p>
-          <div class="actions">
-            <button class="primary" data-screen="register">Criar minha conta</button>
-            <button class="secondary" data-screen="login">Entrar</button>
-          </div>
-        </div>
-        <div class="features">
-          <div><b>✦</b><span>Crie sua identidade interpretativa</span></div>
-          <div><b>◈</b><span>Compartilhe histórias e momentos</span></div>
-          <div><b>☾</b><span>Encontre pessoas e comunidades</span></div>
-        </div>
-      </section>
-    </main>
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0d22"><link rel="icon" href="eclipse.svg"><title>Eclipse — Alpha 0.0.0</title><link rel="stylesheet" href="style.css?v=5"></head><body>
+<div id="app">
+<main class="landing"><div class="stars"></div><div class="glow glow-one"></div><div class="glow glow-two"></div><section class="hero"><div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div><div class="hero-copy"><span class="eyebrow">ALPHA 0.0.0</span><h1>Onde sua <i>história</i><br>ganha vida.</h1><p>Uma rede social para quem cria personagens, identidades interpretativas e universos próprios.</p><div class="actions"><button class="primary" data-screen="register">Criar minha conta</button><button class="secondary" data-screen="login">Entrar</button></div></div></section></main>
+<section id="login" class="auth-screen hidden"><div class="auth-card"><button class="back" data-screen="home">← Voltar</button><div class="brand small"><span class="eclipse-logo"></span><span>Eclipse</span></div><h2>Bem-vindo de volta</h2><p class="muted">Entre na sua conta do Eclipse.</p><form id="loginForm"><label>E-mail<input id="loginEmail" type="email" autocomplete="email" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><button class="primary wide" type="submit">Entrar</button><div id="loginMsg" class="message"></div></form><p class="switch">Ainda não tem uma conta? <button type="button" data-screen="register">Criar conta</button></p></div></section>
+<section id="register" class="auth-screen hidden"><div class="auth-card"><button class="back" data-screen="home">← Voltar</button><div class="brand small"><span class="eclipse-logo"></span><span>Eclipse</span></div><h2>Criar sua conta</h2><p class="muted">Comece a construir sua identidade no Eclipse.</p><form id="registerForm"><label>Nome<input id="regName" type="text" autocomplete="name" required></label><label>Username<input id="regUsername" type="text" placeholder="@seunome" required></label><label>Data de nascimento<input id="regBirth" type="date" required></label><label>E-mail<input id="regEmail" type="email" autocomplete="email" required></label><label>Senha<input id="regPassword" type="password" minlength="6" autocomplete="new-password" required></label><label>Confirmar senha<input id="regConfirm" type="password" minlength="6" autocomplete="new-password" required></label><button class="primary wide" type="submit">Criar conta</button><div id="registerMsg" class="message"></div></form><p class="switch">Já possui uma conta? <button type="button" data-screen="login">Entrar</button></p></div></section>
 
-    <section id="login" class="auth-screen hidden">
-      <div class="auth-card">
-        <button class="back" data-screen="home">← Voltar</button>
-        <div class="brand small"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-        <h2>Bem-vindo de volta</h2><p class="muted">Entre na sua conta do Eclipse.</p>
-        <form id="loginForm">
-          <label>E-mail<input id="loginEmail" type="email" autocomplete="email" required></label>
-          <label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label>
-          <button class="primary wide" type="submit">Entrar</button>
-          <div id="loginMsg" class="message"></div>
-        </form>
-        <p class="switch">Ainda não tem uma conta? <button type="button" data-screen="register">Criar conta</button></p>
-      </div>
-    </section>
+<section id="profileSetup" class="setup-screen hidden"><div class="setup-shell"><div class="setup-top"><div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div><span class="setup-step" id="setupStep">1 de 4</span></div><div class="setup-progress"><span id="setupProgress"></span></div><div class="setup-card"><span class="eyebrow">CONFIGURE SEU PERFIL</span><h1 id="setupTitle">Vamos montar seu perfil.</h1><p class="muted" id="setupDescription">Essas informações ajudam a apresentar sua identidade no Eclipse.</p><div class="setup-page" data-step="1"><label>Biografia<textarea id="setupBio" maxlength="500" placeholder="Conte um pouco sobre você ou sobre sua personagem..."></textarea></label><div class="char-count"><span id="bioCount">0</span>/500</div></div><div class="setup-page hidden" data-step="2"><div class="upload-box"><div id="profilePreview" class="avatar-preview"><span>☾</span></div><h3>Foto de perfil</h3><p class="muted">Escolha uma imagem para representar seu perfil.</p><input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp"></div></div><div class="setup-page hidden" data-step="3"><div class="cover-upload"><div id="coverPreview" class="cover-preview"><span>Foto de capa</span></div><h3>Foto de capa</h3><p class="muted">Essa imagem aparecerá no topo do seu perfil.</p><input id="coverPhoto" type="file" accept="image/png,image/jpeg,image/webp"></div></div><div class="setup-page hidden" data-step="4"><label>Relacionamento<select id="setupRelationship"><option value="">Prefiro não informar</option><option>Solteiro(a)</option><option>Em um relacionamento</option><option>Noivo(a)</option><option>Casado(a)</option><option>Complicado</option></select></label></div><div id="setupMessage" class="message"></div><div class="setup-actions"><button id="setupBack" class="secondary" type="button">Voltar</button><button id="setupNext" class="primary" type="button">Continuar</button></div></div></div></section>
 
-    <section id="register" class="auth-screen hidden">
-      <div class="auth-card">
-        <button class="back" data-screen="home">← Voltar</button>
-        <div class="brand small"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-        <h2>Criar sua conta</h2><p class="muted">Comece a construir sua identidade no Eclipse.</p>
-        <form id="registerForm">
-          <label>Nome<input id="regName" type="text" autocomplete="name" required></label>
-          <label>Username<input id="regUsername" type="text" placeholder="@seunome" required></label>
-          <label>Data de nascimento<input id="regBirth" type="date" required></label>
-          <label>E-mail<input id="regEmail" type="email" autocomplete="email" required></label>
-          <label>Senha<input id="regPassword" type="password" minlength="6" autocomplete="new-password" required></label>
-          <label>Confirmar senha<input id="regConfirm" type="password" minlength="6" autocomplete="new-password" required></label>
-          <button class="primary wide" type="submit">Criar conta</button>
-          <div id="registerMsg" class="message"></div>
-        </form>
-        <p class="switch">Já possui uma conta? <button type="button" data-screen="login">Entrar</button></p>
-      </div>
-    </section>
-
-    
-<section id="profileSetup" class="setup-screen hidden">
-  <div class="setup-shell">
-    <div class="setup-top">
-      <div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-      <span class="setup-step" id="setupStep">1 de 4</span>
-    </div>
-
-    <div class="setup-progress"><span id="setupProgress"></span></div>
-
-    <div class="setup-card">
-      <span class="eyebrow">CONFIGURE SEU PERFIL</span>
-      <h1 id="setupTitle">Vamos montar seu perfil.</h1>
-      <p class="muted" id="setupDescription">Essas informações ajudam a apresentar sua identidade no Eclipse.</p>
-
-      <div class="setup-page" data-step="1">
-        <label>Biografia
-          <textarea id="setupBio" maxlength="500" placeholder="Conte um pouco sobre você ou sobre sua personagem..."></textarea>
-        </label>
-        <div class="char-count"><span id="bioCount">0</span>/500</div>
-      </div>
-
-      <div class="setup-page hidden" data-step="2">
-        <div class="upload-box">
-          <div id="profilePreview" class="avatar-preview"><span>☾</span></div>
-          <h3>Foto de perfil</h3>
-          <p class="muted">Escolha uma imagem para representar seu perfil.</p>
-          <input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp">
-        </div>
-      </div>
-
-      <div class="setup-page hidden" data-step="3">
-        <div class="cover-upload">
-          <div id="coverPreview" class="cover-preview"><span>Foto de capa</span></div>
-          <h3>Foto de capa</h3>
-          <p class="muted">Essa imagem aparecerá no topo do seu perfil.</p>
-          <input id="coverPhoto" type="file" accept="image/png,image/jpeg,image/webp">
-        </div>
-      </div>
-
-      <div class="setup-page hidden" data-step="4">
-        <label>Relacionamento
-          <select id="setupRelationship">
-            <option value="">Prefiro não informar</option>
-            <option>Solteiro(a)</option>
-            <option>Em um relacionamento</option>
-            <option>Noivo(a)</option>
-            <option>Casado(a)</option>
-            <option>Complicado</option>
-          </select>
-        </label>
-      </div><div id="setupMessage" class="message"></div>
-      <div class="setup-actions">
-        <button id="setupBack" class="secondary" type="button">Voltar</button>
-        <button id="setupNext" class="primary" type="button">Continuar</button>
-      </div>
-    </div>
-  </div>
-</section>
-<section id="dashboard" class="dashboard hidden">
-  <aside>
-    <div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div>
-    <nav id="mainNav">
-      <button data-page="homePage" class="active">⌂ Início</button>
-      <button data-page="profilePage">◎ Meu perfil</button>
-      <button data-page="friendsPage">♢ Amigos</button>
-      <button data-page="groupsPage">◈ Grupos</button>
-      <button data-page="messagesPage">◇ Mensagens</button>
-      <button data-page="notificationsPage">♧ Notificações</button>
-      <button data-page="discoverPage">⌕ Descobrir</button>
-      <button data-page="privacyPage">⚿ Privacidade</button>
-      <button data-page="settingsPage">⚙ Configurações</button>
-    </nav>
-    <button id="logout" class="logout">Sair</button>
-  </aside>
-
-  <div class="dash-main">
-    <header><span id="welcome"></span><button id="logoutTop">Sair</button></header>
-
-    <div id="homePage" class="dash-page">
-      <div class="welcome-box">
-        <span class="eclipse-logo large"></span>
-        <div><h2>Sua história começa aqui.</h2><p>Bem-vindo ao Eclipse. Explore as funções da sua rede social.</p></div>
-      </div>
-    </div>
-
-    <div id="profilePage" class="dash-page hidden">
-      <div class="panel">
-        <h2>Meu perfil</h2>
-        <p class="muted">Configure as informações do seu perfil interpretativo.</p>
-        <form id="profileForm">
-          <label>Nome<input id="profileName" type="text" required></label>
-          <label>Username<input id="profileUsername" type="text"></label>
-          <label>Local onde mora<input id="profileLocation" type="text"></label>
-          <label>Relacionamento<input id="profileRelationship" type="text"></label>
-          <label>Biografia<textarea id="profileBio"></textarea></label>
-          <button class="primary wide" type="submit">Salvar perfil</button>
-          <div id="profileMsg" class="message"></div>
-        </form>
-      </div>
-    </div>
-
-    <div id="friendsPage" class="dash-page hidden">
-      <div class="panel"><h2>Amigos</h2><p class="muted">Gerencie suas conexões no Eclipse.</p>
-        <form id="friendForm"><label>UID do usuário<input id="friendUid" required></label><button class="primary" type="submit">Enviar solicitação</button><div id="friendMsg" class="message"></div></form>
-      </div>
-    </div>
-
-    <div id="groupsPage" class="dash-page hidden">
-      <div class="panel"><h2>Grupos</h2><p class="muted">Crie e encontre comunidades interpretativas.</p>
-        <form id="groupForm"><label>Nome do grupo<input id="groupName" required></label><label>Descrição<textarea id="groupDescription"></textarea></label><button class="primary" type="submit">Criar grupo</button><div id="groupMsg" class="message"></div></form>
-        <div id="groupsList" class="list"></div>
-      </div>
-    </div>
-
-    <div id="messagesPage" class="dash-page hidden">
-      <div class="panel"><h2>Mensagens</h2><p class="muted">Converse com seus amigos.</p>
-        <form id="messageForm"><label>UID do destinatário<input id="messageUid" required></label><label>Mensagem<textarea id="messageText" required></textarea></label><button class="primary" type="submit">Enviar mensagem</button><div id="messageMsg" class="message"></div></form>
-      </div>
-    </div>
-
-    <div id="notificationsPage" class="dash-page hidden"><div class="panel"><h2>Notificações</h2><div id="notificationsList" class="list"><p class="muted">Carregando...</p></div></div></div>
-    <div id="discoverPage" class="dash-page hidden"><div class="panel"><h2>Descobrir</h2><p class="muted">Pesquise e descubra pessoas, perfis e comunidades do Eclipse.</p></div></div>
-    <div id="privacyPage" class="dash-page hidden">
-      <div class="panel"><h2>Checkup de Privacidade</h2><p class="muted">Controle quem pode encontrar você e acessar seu conteúdo.</p>
-        <form id="privacyForm">
-          <label>Quem pode ver sua lista de amigos<select id="privacyFriends"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
-          <label>Quem pode encontrar você<select id="privacyFind"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
-          <label>Receber solicitações de amizade<select id="privacyRequests"><option value="yes">Sim</option><option value="no">Não</option></select></label>
-          <button class="primary" type="submit">Salvar privacidade</button><div id="privacyMsg" class="message"></div>
-        </form>
-      </div>
-    </div>
-    <div id="settingsPage" class="dash-page hidden"><div class="panel"><h2>Configurações</h2><p class="muted">Configurações da sua conta estarão aqui.</p></div></div>
-  </div>
-</section>
-  </div>
-
-  <!-- Firebase sem Vite, sem React e sem build: SDK carregado diretamente pelo navegador. -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-  <script src="app.js?v=4"></script>
-</body>
-</html>
+<section id="dashboard" class="dashboard hidden"><div id="mobileOverlay" class="mobile-overlay hidden"></div><aside id="sidebar"><div class="side-brand"><div class="brand"><span class="eclipse-logo"></span><span>Eclipse</span></div><button id="mobileClose" class="icon-btn">×</button></div><nav id="mainNav"><button data-page="homePage" class="active">⌂ <span>Início</span></button><button data-page="profilePage">◎ <span>Meu perfil</span></button><button data-page="friendsPage">♢ <span>Amigos</span></button><button data-page="groupsPage">◈ <span>Grupos</span></button><button data-page="notificationsPage">♧ <span>Notificações</span></button><button data-page="discoverPage">⌕ <span>Descobrir</span></button><button data-page="privacyPage">⚿ <span>Privacidade</span></button><button data-page="settingsPage">⚙ <span>Configurações</span></button></nav><button id="logout" class="logout">↪ <span>Sair</span></button></aside>
+<div class="dash-main"><header class="topbar"><button id="mobileMenu" class="mobile-menu">☰</button><div class="search-top">⌕ <input id="globalSearch" placeholder="Pesquisar no Eclipse"></div><div class="top-actions"><button class="top-icon" data-page="notificationsPage">♧</button><button id="topProfile" class="top-profile"><span id="topAvatar" class="mini-avatar">☾</span><span id="welcome"></span></button><button id="logoutTop" class="top-exit">Sair</button></div></header>
+<div id="homePage" class="dash-page"><div class="feed-layout"><main class="feed-column"><section class="composer card"><div class="composer-row"><span id="composerAvatar" class="avatar">☾</span><button id="thinkingBtn" class="thinking">O que você está pensando?</button></div><div class="composer-actions"><button id="createStoryBtn">＋ Criar story</button><button id="composerPhotoBtn">▧ Foto/vídeo</button></div></section><section class="stories card"><div class="section-head"><h3>Stories</h3><span>dos seus amigos</span></div><div id="storiesList" class="stories-list"></div></section><section id="feedList" class="feed-list"></section></main><aside class="right-column"><section class="card mini-profile" id="homeMiniProfile"></section><section class="card"><h3>Sugestões</h3><div id="suggestionsList" class="suggestions-list"><p class="muted">Encontre pessoas no Descobrir.</p></div></section></aside></div></div>
+<div id="profilePage" class="dash-page hidden"><div id="publicProfile" class="facebook-profile"></div></div>
+<div id="friendsPage" class="dash-page hidden"><div class="panel"><h2>Amigos</h2><p class="muted">Suas conexões e solicitações aparecem aqui.</p><div id="friendRequestsList" class="list"></div><div id="friendsList" class="list"></div></div></div>
+<div id="groupsPage" class="dash-page hidden"><div class="panel"><h2>Grupos</h2><p class="muted">Crie e encontre comunidades interpretativas.</p><form id="groupForm"><label>Nome do grupo<input id="groupName" required></label><label>Descrição<textarea id="groupDescription"></textarea></label><button class="primary" type="submit">Criar grupo</button><div id="groupMsg" class="message"></div></form><div id="groupsList" class="list"></div></div></div>
+<div id="notificationsPage" class="dash-page hidden"><div class="panel"><h2>Notificações</h2><div id="notificationsList" class="list"><p class="muted">Carregando...</p></div></div></div>
+<div id="discoverPage" class="dash-page hidden"><div class="panel"><h2>Descobrir</h2><div class="discover-search"><input id="discoverInput" placeholder="Pesquisar nome ou username"><button id="discoverBtn" class="primary">Pesquisar</button></div><div id="discoverResults" class="list"></div></div></div>
+<div id="privacyPage" class="dash-page hidden"><div class="panel"><h2>Checkup de Privacidade</h2><p class="muted">Controle quem pode encontrar você e acessar seu conteúdo.</p><form id="privacyForm"><label>Quem pode ver sua lista de amigos<select id="privacyFriends"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label><label>Quem pode encontrar você<select id="privacyFind"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label><label>Receber solicitações de amizade<select id="privacyRequests"><option value="yes">Sim</option><option value="no">Não</option></select></label><button class="primary" type="submit">Salvar privacidade</button><div id="privacyMsg" class="message"></div></form></div></div>
+<div id="settingsPage" class="dash-page hidden"><div class="panel"><h2>Configurações</h2><p class="muted">Configurações da sua conta.</p></div></div>
+</div></section>
+</div>
+<div id="messageDock" class="message-dock hidden"><div class="message-window"><div class="message-head"><div><span id="chatAvatar" class="mini-avatar">☾</span><div><strong id="chatName">Mensagens</strong><small id="chatStatus">Eclipse</small></div></div><button id="closeChat">×</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-input"><input id="chatText" placeholder="Digite uma mensagem..." autocomplete="off"><button type="submit">➤</button></form></div></div>
+<div id="postModal" class="modal hidden"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><h2 id="modalTitle">Criar publicação</h2><textarea id="postText" placeholder="O que você está pensando?"></textarea><div class="modal-row"><input id="postImage" type="file" accept="image/png,image/jpeg,image/webp"><button id="publishBtn" class="primary">Publicar</button></div><div id="postMsg" class="message"></div></div></div>
+<div id="storyModal" class="modal hidden"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><h2>Criar story</h2><p class="muted">Seu story ficará disponível para seus amigos.</p><input id="storyText" placeholder="Escreva algo para seu story"><input id="storyImage" type="file" accept="image/png,image/jpeg,image/webp"><button id="publishStoryBtn" class="primary wide">Publicar story</button><div id="storyMsg" class="message"></div></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script><script src="app.js?v=5"></script></body></html>
