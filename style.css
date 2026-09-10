@@ -134,3 +134,104 @@ body{
 /* Eclipse Alpha — funcionalidade social */
 .post-author-link,.suggestion-person{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;text-align:left;color:inherit;cursor:pointer}.post-author-link span{display:block}.post-author-link:hover strong,.suggestion-person:hover strong{text-decoration:underline}.post-counts{display:flex;justify-content:space-between;color:#777d91;font-size:12px;padding-top:11px}.post-actions .liked{color:#6946d8;font-weight:800}.comments-box{display:none;border-top:1px solid #edf0f5;margin-top:8px;padding-top:10px}.comments-box.open{display:block}.comment{padding:7px 0;font-size:13px}.comment strong{margin-right:7px}.comment-form{display:flex;gap:7px;margin-top:8px}.comment-form input{flex:1;border:1px solid #dfe2ec;border-radius:18px;padding:9px 12px}.comment-form button{border-radius:18px;padding:8px 13px;background:#7551e9;color:#fff}.profile-post{border-top:1px solid #edf0f5;padding:12px 0}.profile-post img{display:block;width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-top:8px}.profile-edit-panel{max-width:950px;margin:16px auto;padding:20px;background:#fff;color:#22263a;border-radius:12px;border:1px solid #dfe2ec}.profile-edit-panel.open{display:block}.profile-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.profile-edit-grid .full{grid-column:1/-1}.profile-edit-grid label{display:block;font-weight:700;margin-bottom:6px}.profile-edit-grid input,.profile-edit-grid textarea,.profile-edit-grid select{width:100%;box-sizing:border-box;padding:11px;border:1px solid #dfe2ec;border-radius:9px;background:#fff;color:#222}.profile-edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.chat-launcher{position:fixed;right:25px;bottom:0;z-index:99}.chat-launcher-btn{border:0;border-radius:12px 12px 0 0;padding:13px 18px;background:#7551e9;color:#fff;font-weight:800;box-shadow:0 8px 30px #11172d35;cursor:pointer}.chat-friends-bar{position:absolute;right:0;bottom:52px;width:280px;background:#fff;border:1px solid #dfe2ec;border-radius:12px 12px 0 0;padding:10px;box-shadow:0 8px 30px #11172d35;display:flex;gap:7px;flex-direction:column;max-height:280px;overflow:auto}.chat-friend{display:flex;align-items:center;gap:9px;border:0;background:none;padding:7px;text-align:left;cursor:pointer;border-radius:8px}.chat-friend:hover{background:#f1f3f7}.chat-friend span:last-child{font-size:13px}.hidden{display:none!important}
 @media(max-width:700px){.profile-edit-grid{grid-template-columns:1fr}.profile-edit-grid .full{grid-column:auto}.chat-launcher{right:10px}.chat-friends-bar{right:0;width:calc(100vw - 30px)}}
+
+/* === Padronização visual: todos os cards seguem o tema Eclipse === */
+.dashboard,
+.dash-main,
+.dash-page{
+  color:#eef0ff !important;
+}
+.panel,
+.card,
+.post-card,
+.feed-card,
+.story-card,
+.profile-card,
+.info-card,
+.friend-card,
+.group-card,
+.chat-card,
+.notification-card,
+.search-card,
+.create-post-card,
+.composer-card,
+.modal-card,
+.group-create-card{
+  background:rgba(15,17,39,.96) !important;
+  color:#eef0ff !important;
+  border:1px solid #292d50 !important;
+  box-shadow:0 18px 55px rgba(0,0,0,.28) !important;
+}
+.panel p,.card p,.post-card p,.feed-card p,.story-card p,
+.profile-card p,.info-card p,.friend-card p,.group-card p,
+.chat-card p,.notification-card p,.search-card p{
+  color:#aeb3d0;
+}
+.panel input,.panel textarea,.panel select,
+.card input,.card textarea,.card select,
+.modal-card input,.modal-card textarea,.modal-card select,
+.group-create-card input,.group-create-card textarea,.group-create-card select{
+  background:#090b1b !important;
+  color:#eef0ff !important;
+  border-color:#292d50 !important;
+}
+.modal-card{
+  width:min(560px,100%);
+  border-radius:16px;
+}
+.modal-card h2,.modal-card h3,.group-create-card h2,.group-create-card h3{
+  color:#fff !important;
+}
+.modal-card .modal-close{
+  color:#aeb3d0 !important;
+}
+.modal-card .modal-close:hover{
+  color:#fff !important;
+}
+.topbar{
+  background:rgba(6,7,20,.92) !important;
+  color:#fff !important;
+  border-bottom-color:#292d50 !important;
+}
+.topbar input,
+.search-input{
+  background:#11142b !important;
+  color:#fff !important;
+  border-color:#292d50 !important;
+}
+.topbar input::placeholder,
+.search-input::placeholder{
+  color:#777d9e !important;
+}
+/* Mantém botões de ação com a identidade Eclipse, sem áreas brancas inesperadas */
+button,
+.primary-btn{
+  color:#fff;
+}
+.modal-card button:not(.secondary-btn),
+.group-create-card button:not(.profile-edit-btn){
+  background:linear-gradient(135deg,#7c3aed,#2563eb);
+  color:#fff;
+  border:0;
+}
+.modal-card .profile-edit-btn,
+.group-create-card .profile-edit-btn{
+  background:#252943;
+  color:#e8e9fa;
+  border:1px solid #363b61;
+}
+/* Os cards do feed nunca voltam ao tema branco em troca de página */
+.dashboard .panel,
+.dashboard .card,
+.dashboard [class*="card"]{
+  background:rgba(15,17,39,.96);
+  color:#eef0ff;
+}
+
+/* Correção definitiva: modal de criação de grupo começa fechado */
+#createGroupModal{
+  display:none !important;
+}
+#createGroupModal.is-open{
+  display:grid !important;
+}

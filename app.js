@@ -58,3 +58,12 @@ function bindChat(){$('openChatBar').onclick=()=>{$('chatFriendsBar').classList.
 document.addEventListener('click',e=>{if(e.target.closest('#saveProfileEdit'))saveProfileEdit();if(e.target.closest('#cancelProfileEdit'))$('profileEditPanel').classList.remove('open')});
 document.addEventListener('DOMContentLoaded',()=>{bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindPrivacy();bindDiscover();if(initFirebase())auth.onAuthStateChanged(u=>{if(u)checkAfterLogin(u);else show('home')});else $('loginMsg').textContent='Firebase não foi carregado.'});
 })();
+
+/* Garantia: nunca abrir o modal de grupo automaticamente ao carregar/trocar de página. */
+document.addEventListener('DOMContentLoaded', function(){
+  const m=document.getElementById('createGroupModal');
+  if(m){
+    m.classList.remove('is-open','open');
+    m.setAttribute('aria-hidden','true');
+  }
+});
