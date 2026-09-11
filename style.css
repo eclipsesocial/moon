@@ -411,3 +411,132 @@ body{
 }
 
 #postModal.hidden,#storyModal.hidden{display:none !important;}
+
+/* === Eclipse Alpha: correção definitiva do tema escuro === */
+:root{
+  --eclipse-global-bg:radial-gradient(circle at 65% 40%,#171345 0,#0a0b20 42%,#060713 100%);
+  --eclipse-card:rgba(15,17,39,.96);
+  --eclipse-card-2:rgba(18,20,45,.98);
+  --eclipse-border:#292d50;
+  --eclipse-text:#eef0ff;
+  --eclipse-muted:#9da1bd;
+}
+html,body{background:var(--eclipse-global-bg)!important;color:var(--eclipse-text)!important;}
+#dashboard,.dashboard,.dash-main,.dash-page,#profilePage,#homePage,#friendsPage,#groupsPage,#discoverPage,#notificationsPage,#messagesPage,#settingsPage,#adminPage{
+  background:var(--eclipse-global-bg)!important;
+  color:var(--eclipse-text)!important;
+}
+.dash-main{min-height:100vh!important;}
+.topbar{
+  background:rgba(7,8,22,.96)!important;
+  border-bottom:1px solid var(--eclipse-border)!important;
+  color:var(--eclipse-text)!important;
+}
+.search-top{
+  background:#11132d!important;
+  border:1px solid #292d50!important;
+  color:#9da1bd!important;
+}
+.search-top input{color:#eef0ff!important;}
+.search-top input::placeholder{color:#737895!important;}
+.top-icon,.top-exit,.top-profile{color:#dfe2ff!important;}
+.card,.panel,.facebook-profile,.profile-about,.profile-publications,.post,.composer,.stories,.right-column .card,.message-window,.modal-card,.profile-edit-panel,.group-card,.friend-card,.notification-card,.search-card{
+  background:var(--eclipse-card)!important;
+  color:var(--eclipse-text)!important;
+  border:1px solid var(--eclipse-border)!important;
+  box-shadow:0 18px 55px rgba(0,0,0,.28)!important;
+}
+.facebook-profile{overflow:hidden!important;}
+.profile-main{background:var(--eclipse-card)!important;color:var(--eclipse-text)!important;}
+.profile-cover{background:linear-gradient(135deg,#19153d,#303d77)!important;}
+.profile-avatar-large{border-color:var(--eclipse-card)!important;background:#171a35!important;}
+.profile-name h1,.profile-name p,.profile-nav button,.profile-section-title h3,.profile-about h3,.profile-publications h3{color:var(--eclipse-text)!important;}
+.profile-name p,.profile-nav button,.info-row,.muted{color:var(--eclipse-muted)!important;}
+.profile-nav{border-top-color:var(--eclipse-border)!important;}
+.profile-nav button.active{color:#a78bfa!important;border-bottom-color:#8b5cf6!important;}
+.info-row{border-bottom:1px solid transparent!important;}
+.info-row b{color:#dfe2ff!important;}
+.profile-publications{margin-top:16px!important;}
+.profile-post{background:var(--eclipse-card-2)!important;color:var(--eclipse-text)!important;border:1px solid var(--eclipse-border)!important;}
+.composer-actions{border-top-color:var(--eclipse-border)!important;}
+.composer-actions button{background:transparent!important;color:#b9bdd6!important;}
+.thinking{background:#11132d!important;color:#aeb3d0!important;}
+.post-actions{border-top-color:var(--eclipse-border)!important;}
+.post-actions button{color:#aeb3d0!important;}
+.post-actions button:hover{background:#1a1d39!important;}
+.suggestion{border-bottom-color:var(--eclipse-border)!important;}
+.list-item{border-bottom-color:var(--eclipse-border)!important;}
+.panel label,.profile-edit-panel label{color:#c9cce0!important;}
+.panel input,.panel textarea,.panel select,.discover-search input,
+.profile-edit-panel input,.profile-edit-panel textarea,.profile-edit-panel select{
+  background:#080a1b!important;
+  color:#f3f4ff!important;
+  border-color:#2a2e4e!important;
+}
+.panel input::placeholder,.panel textarea::placeholder,.profile-edit-panel input::placeholder,.profile-edit-panel textarea::placeholder{color:#737895!important;}
+.modal{background:#050713cc!important;}
+.modal-card{background:var(--eclipse-card)!important;color:var(--eclipse-text)!important;}
+.modal-card input,.modal-card textarea,.modal-card select{
+  background:#080a1b!important;color:#f3f4ff!important;border-color:#2a2e4e!important;
+}
+.modal-close{color:#c8cbe0!important;}
+.message-window{background:var(--eclipse-card)!important;}
+.message-head{border-bottom-color:var(--eclipse-border)!important;}
+.message-head,.message-head button{color:var(--eclipse-text)!important;}
+.chat-messages{background:#080a1b!important;}
+.chat-input{border-top-color:var(--eclipse-border)!important;}
+.chat-input input{background:#11132d!important;color:#f3f4ff!important;}
+.chat-input input::placeholder{color:#737895!important;}
+
+/* O painel de edição não deve criar uma faixa clara abaixo do perfil. */
+#profilePage .profile-edit-panel{background:var(--eclipse-card)!important;color:var(--eclipse-text)!important;}
+#profilePage .profile-main{display:flex!important;flex-direction:column!important;}
+#profilePage .profile-about,#profilePage .profile-publications{width:100%!important;box-sizing:border-box!important;}
+
+/* Remove qualquer fundo branco herdado das versões antigas. */
+#profilePage *,#homePage *,#friendsPage *,#groupsPage *,#discoverPage *,#notificationsPage *,#messagesPage *,#settingsPage *,#adminPage{
+  scrollbar-color:#34395e #080a1b;
+}
+
+/* === Eclipse Media Upload UI === */
+.native-file-input{display:none!important}
+.media-upload-btn{
+  display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;
+  padding:13px 15px;border:1px solid rgba(139,92,246,.30);border-radius:14px;
+  background:linear-gradient(135deg,rgba(124,58,237,.14),rgba(37,99,235,.10));
+  color:#eef0ff;cursor:pointer;transition:.2s;user-select:none;
+}
+.media-upload-btn:hover{transform:translateY(-1px);border-color:rgba(139,92,246,.65);background:linear-gradient(135deg,rgba(124,58,237,.23),rgba(37,99,235,.16));box-shadow:0 10px 30px rgba(59,40,140,.18)}
+.media-upload-btn:active{transform:translateY(0)}
+.media-upload-btn.compact{min-height:62px;padding:10px 12px}
+.media-upload-icon{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#8b5cf6,#3b82f6);color:#fff;font-size:18px;box-shadow:0 6px 18px rgba(75,55,190,.25)}
+.media-upload-btn b{display:block;font-size:13px}.media-upload-btn small{display:block;margin-top:3px;color:#9da1bd;font-size:11px;font-weight:500}
+.media-picker-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:8px}
+.media-selected{font-size:11px;color:#8f96b5;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer-actions button{display:flex!important;align-items:center;justify-content:center;gap:7px;border-radius:11px!important;transition:.2s!important}
+.composer-actions button:hover{background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.10))!important;color:#ddd6fe!important;transform:translateY(-1px)}
+.post-video,.profile-post video{display:block;width:100%;max-height:520px;margin-top:8px;border-radius:10px;background:#050713}
+
+/* === Recorte de foto de perfil === */
+.crop-card{width:min(620px,100%);background:var(--eclipse-card);color:var(--eclipse-text);border:1px solid var(--eclipse-border);border-radius:22px;padding:24px;position:relative;box-shadow:0 25px 90px rgba(0,0,0,.55)}
+.crop-head{padding-right:30px}.crop-head h2{margin:6px 0 4px;font:700 26px 'Space Grotesk'}.crop-head p{margin:0 0 16px;color:var(--eclipse-muted);font-size:13px}
+.crop-stage{width:min(520px,100%);aspect-ratio:1;margin:0 auto;position:relative;overflow:hidden;border-radius:18px;background:#050713;border:1px solid #30365c;touch-action:none;cursor:grab}
+.crop-stage:active{cursor:grabbing}.crop-stage canvas{display:block;width:100%;height:100%}.crop-circle-guide{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 9999px rgba(0,0,0,.38),inset 0 0 0 1px rgba(139,92,246,.45);pointer-events:none}
+.crop-controls{display:flex;align-items:center;gap:12px;margin-top:15px}.crop-controls label{flex:1;color:#c9cce0;font-size:12px;font-weight:700}.crop-controls input{width:100%;accent-color:#8b5cf6;margin-top:7px}.crop-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.crop-actions .primary{min-width:120px}
+@media(max-width:600px){.crop-card{padding:18px;border-radius:18px}.crop-controls{align-items:flex-end}.crop-actions{display:grid;grid-template-columns:1fr 1fr}.crop-actions button{width:100%}}
+
+/* =========================================================
+   ECLIPSE — GRUPOS EM ESTILO FACEBOOK
+   ========================================================= */
+.groups-shell{width:min(1120px,100%);margin:0 auto;padding:22px 20px 80px;box-sizing:border-box}
+.groups-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:28px 30px;margin-bottom:14px}
+.groups-hero-copy h2{font:700 34px 'Space Grotesk';margin:6px 0}.groups-hero-copy p{max-width:680px;margin:0;line-height:1.55}.group-create-main{white-space:nowrap;padding:13px 20px}
+.groups-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 16px;margin-bottom:20px;position:sticky;top:12px;z-index:5}
+.groups-tabs{display:flex;gap:4px}.group-tab{border:0;background:transparent;color:#9da1bd;padding:12px 18px;border-radius:10px;font-weight:700;cursor:pointer}.group-tab:hover{background:#171a35;color:#eef0ff}.group-tab.active{background:rgba(124,58,237,.16);color:#c4b5fd}
+.groups-search{display:flex;align-items:center;gap:9px;width:min(340px,45%);background:#080a1b;border:1px solid #2a2e4e;border-radius:12px;padding:0 12px}.groups-search span{color:#777e9d}.groups-search input{border:0!important;background:transparent!important;outline:0!important;width:100%;padding:11px 0!important;color:#f3f4ff!important}.group-page-msg{min-height:0;margin:0 0 10px}
+.groups-section-head{display:flex;align-items:end;justify-content:space-between;margin:10px 2px 12px}.groups-section-head h3{font:700 20px 'Space Grotesk';margin:0 0 3px}.groups-section-head p{margin:0}
+.groups-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.group-fb-card{overflow:hidden;padding:0!important}.group-cover-fake{height:116px;background:linear-gradient(135deg,#18133b,#273b78 55%,#302060);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}.group-cover-fake:before{content:"";position:absolute;width:220px;height:220px;border-radius:50%;border:1px solid rgba(255,255,255,.09);box-shadow:0 0 0 35px rgba(139,92,246,.05),0 0 0 75px rgba(59,130,246,.04)}.group-cover-fake span{font-size:32px;color:#e9ddff;z-index:1}.group-card-body{padding:0 17px 17px;position:relative}.group-card-icon{width:58px;height:58px;border-radius:15px;margin-top:-29px;display:grid;place-items:center;background:linear-gradient(135deg,#8b5cf6,#2563eb);border:4px solid var(--eclipse-card);font:700 23px 'Space Grotesk';position:relative;box-shadow:0 10px 24px rgba(0,0,0,.28)}.group-card-title{margin-top:9px}.group-card-title h3{font:700 18px 'Space Grotesk';margin:0 0 3px}.group-card-title span{font-size:12px;color:#858ba8}.group-card-body>p{font-size:13px;line-height:1.5;color:#aeb3d0;min-height:39px;margin:12px 0}.group-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.group-card-actions button{width:100%}.group-joined{border:1px solid #30365c;background:#171a35;color:#c7cae0;border-radius:10px;font-weight:700;cursor:pointer}
+.groups-empty{text-align:center;padding:50px 20px;grid-column:1/-1}.groups-empty-icon{width:62px;height:62px;border-radius:18px;margin:0 auto 14px;display:grid;place-items:center;background:rgba(124,58,237,.16);font-size:26px;color:#c4b5fd}.groups-empty h3{margin:0 0 6px;font:700 20px 'Space Grotesk'}
+.group-detail-view{padding-top:4px}.group-back{margin-bottom:12px}.group-profile-head{overflow:hidden;padding:0!important}.group-detail-cover{height:220px;background:linear-gradient(135deg,#19143f,#2b3d7c 55%,#3b2560);display:flex;align-items:flex-end;padding:0 28px 20px;box-sizing:border-box}.group-detail-mark{width:96px;height:96px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(135deg,#8b5cf6,#2563eb);border:6px solid var(--eclipse-card);font:700 38px 'Space Grotesk';box-shadow:0 14px 35px rgba(0,0,0,.3)}.group-detail-info{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 24px 22px}.group-detail-info h2{font:700 29px 'Space Grotesk';margin:4px 0}.group-detail-info p{margin:0}.group-detail-actions{display:flex;align-items:center;gap:8px}.group-role{display:inline-flex;padding:9px 12px;border-radius:10px;background:rgba(139,92,246,.13);border:1px solid rgba(139,92,246,.25);color:#c4b5fd;font-size:12px;font-weight:800}.group-detail-tabs{display:flex;gap:2px;border-bottom:1px solid var(--eclipse-border);margin-top:12px}.group-detail-tabs button{background:transparent;border:0;color:#9298b6;font-weight:800;padding:14px 19px;cursor:pointer;border-bottom:2px solid transparent}.group-detail-tabs button.active{color:#c4b5fd;border-bottom-color:#8b5cf6}.group-detail-tab-panel{padding-top:14px}.group-composer{padding:16px;margin-bottom:14px}.group-composer-row{display:flex;align-items:center;gap:10px}.group-composer-row .thinking{flex:1;text-align:left}.group-composer-actions{display:flex;align-items:center;gap:8px;border-top:1px solid var(--eclipse-border);margin-top:13px;padding-top:11px}.group-media-button{display:inline-flex;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid #30365c;background:#11132d;color:#c7cae0;font-weight:700;font-size:12px;cursor:pointer}.group-media-button:hover{border-color:#8b5cf6;color:#ddd6fe}.group-composer-actions .media-selected{flex:1}.group-post-text{width:100%;min-height:85px;box-sizing:border-box;margin-top:12px;border:1px solid #2a2e4e;border-radius:12px;background:#080a1b;color:#f3f4ff;padding:12px;resize:vertical;outline:0}.group-post{padding:17px;margin-bottom:12px}.group-post-head{display:flex;align-items:center;gap:10px}.group-post-head strong{display:block}.group-post-head small{display:block;color:#777e9d;font-size:11px;margin-top:3px}.group-post-text-view{white-space:pre-wrap;line-height:1.55;margin:14px 0 8px;color:#e7e9f5}.group-post-media{display:block;width:100%;max-height:560px;object-fit:contain;border-radius:12px;background:#050713;margin-top:10px}.group-post-actions{display:flex;border-top:1px solid var(--eclipse-border);margin-top:12px;padding-top:5px}.group-post-actions button{flex:1;border:0;background:transparent;color:#9da1bd;padding:10px;border-radius:9px;cursor:pointer;font-weight:700}.group-post-actions button:hover{background:#171a35;color:#ddd6fe}.group-comments{margin-top:6px}.group-comment{display:flex;gap:8px;padding:7px 0}.group-comment p{margin:3px 0 0;color:#b9bdd6;font-size:13px}.group-comment-input{width:100%;box-sizing:border-box;border:1px solid #2a2e4e;border-radius:10px;background:#080a1b;color:#fff;padding:9px 11px;margin-top:7px;outline:0}.group-private-note{padding:30px;text-align:center}.group-about-card,.group-members-card{padding:20px}.group-about-card h3,.group-members-card h3{margin:0 0 12px;font:700 18px 'Space Grotesk'}.group-about-card p{line-height:1.6;color:#b9bdd6}.group-about-row{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--eclipse-border);color:#9298b6}.group-about-row strong{color:#eef0ff}.group-members-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.group-member-row{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--eclipse-border);border-radius:12px;background:#0d1024}.group-member-row>div{min-width:0;flex:1}.group-member-row strong{display:block}.group-member-row small{display:block;color:#777e9d;margin-top:2px}.group-member-row .group-role{padding:5px 8px;font-size:10px}
+@media(max-width:900px){.groups-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.groups-hero{align-items:flex-start;flex-direction:column}.group-create-main{width:100%}.group-detail-info{align-items:flex-start;flex-direction:column}.group-detail-actions{width:100%}.group-detail-actions button{flex:1}}
+@media(max-width:620px){.groups-shell{padding:12px 10px 60px}.groups-toolbar{position:static;align-items:stretch;flex-direction:column}.groups-search{width:100%}.groups-tabs{overflow:auto}.group-tab{white-space:nowrap}.groups-grid{grid-template-columns:1fr}.group-detail-cover{height:170px;padding:0 18px 15px}.group-detail-mark{width:78px;height:78px;font-size:30px}.group-detail-info{padding:15px}.group-detail-info h2{font-size:24px}.group-detail-tabs{overflow:auto}.group-detail-tabs button{white-space:nowrap;padding:12px 14px}.group-composer-actions{flex-wrap:wrap}.group-composer-actions .media-selected{width:100%;flex-basis:100%}.group-members-list{grid-template-columns:1fr}}
