@@ -30,7 +30,7 @@ async function uploadToR2(fileOrBlob,folder,uid,fileName='arquivo'){
   }
   let body={};
   try{body=await res.json()}catch{}
-  if(!res.ok||!body.ok)throw new Error(body.error||'Falha no upload para o R2.');
+  if(!res.ok||!body.ok){const detail=body.details?' — '+body.details:'';throw new Error((body.error||'Falha no upload para o R2.')+detail);}
   return {key:body.key,url:R2_WORKER_URL+'/file?key='+encodeURIComponent(body.key),type:body.contentType||file.type,size:body.size||file.size};
 }
 
@@ -108,297 +108,159 @@ async function getProfile(uid){
 function closeMobile(){ $('sidebar')?.classList.remove('open'); $('mobileOverlay')?.classList.add('hidden') }
 
 async function getUserRole(uid){
-  if(!uid)return 0;
-  const userSnap=await db.ref('users/'+uid).once('value');
-  const user=userSnap.val()||{};
-  if(Number.isInteger(Number(user.role)))return Number(user.role);
-  // Compatibilidade com a estrutura antiga do Alpha.
-  const s=await db.ref('admin/'+uid).once('value');
-  const v=s.val();
-  if(v?.role==='admin')return 2;
-  if(v?.role==='moderator')return 1;
-  return 0;
+  if(!uid||!db)return 0;
+  try{
+    const userSnap=await db.ref('users/'+uid).once('value');
+    const user=userSnap.val()||{};
+    const role=Number(user.role);
+    if(role===1||role===2)return role;
+    const legacy=await db.ref('admin/'+uid).once('value');
+    const v=legacy.val()||{};
+    if(v.role==='admin'||Number(v.roleNumber)===2)return 2;
+    if(v.role==='moderator'||Number(v.roleNumber)===1)return 1;
+    return 0;
+  }catch(e){console.error('getUserRole',e);return 0;}
 }
 function roleName(role){role=Number(role);return role===2?'Administrador':role===1?'Moderador':'Usuário'}
 function roleBadge(role){
-  if(role && typeof role==='object')role=role.role ?? role.adminRole;
-  if(role==='admin')role=2;
-  if(role==='moderator')role=1;
-  role=Number(role);
+  if(role&&typeof role==='object')role=role.role??role.adminRole;
+  if(role==='admin')role=2;if(role==='moderator')role=1;role=Number(role);
   if(role===2)return '<span class="role-badge role-admin role-badge-inline">🛡 Administrador</span>';
   if(role===1)return '<span class="role-badge role-moderator role-badge-inline">🛡 Moderador</span>';
   return '';
 }
 async function refreshMyAdminUI(){
   if(!currentUser)return 0;
-  const role=await getUserRole(currentUser.uid);
-  currentUserRole=role;
-  const nav=$('adminNavItem');
-  if(nav)nav.classList.toggle('hidden',!(role===1||role===2));
+  const role=await getUserRole(currentUser.uid);currentUserRole=role;
+  $('adminNavItem')?.classList.toggle('hidden',role<1);
   const badge=$('myAdminBadge');
-  if(badge){
-    badge.textContent=role===2?'🛡 Administrador':role===1?'🛡 Moderador':'';
-    badge.className='role-badge '+(role===2?'role-admin':role===1?'role-moderator':'')+(role?'':' hidden');
-  }
+  if(badge){badge.textContent=role===2?'🛡 Administrador':role===1?'🛡 Moderador':'';badge.className='role-badge '+(role===2?'role-admin':role===1?'role-moderator':'')+(role?'':' hidden')}
   return role;
 }
 async function getModerationStatus(uid){
-  const s=await db.ref('users/'+uid).once('value');
-  const u=s.val()||{};
+  const s=await db.ref('users/'+uid).once('value');const u=s.val()||{};
   return {status:u.status||'active',suspendedUntil:Number(u.suspendedUntil||0),suspensionReason:u.suspensionReason||'',banReason:u.banReason||''};
 }
 async function enforceAccountStatus(u){
-  if(!u||!currentUser)return false;
-  const st=await getModerationStatus(u.uid);
-  if(st.status==='banned'){
-    alert('Esta conta foi banida do Eclipse.'+(st.banReason?'\nMotivo: '+st.banReason:''));
-    await auth.signOut();
-    return true;
-  }
+  if(!u||!currentUser)return false;const st=await getModerationStatus(u.uid);
+  if(st.status==='banned'){alert('Esta conta foi banida do Eclipse.'+(st.banReason?'\nMotivo: '+st.banReason:''));await auth.signOut();return true}
   if(st.status==='suspended'){
-    if(st.suspendedUntil && Date.now()>=st.suspendedUntil){
-      await db.ref('users/'+u.uid).update({status:'active',suspendedUntil:null,suspensionReason:null});
-      return false;
-    }
-    const until=st.suspendedUntil?new Date(st.suspendedUntil).toLocaleString('pt-BR'):'indefinidamente';
-    alert('Sua conta está suspensa até '+until+'.'+(st.suspensionReason?'\nMotivo: '+st.suspensionReason:''));
-    await auth.signOut();
-    return true;
+    if(st.suspendedUntil&&Date.now()>=st.suspendedUntil){await db.ref('users/'+u.uid).update({status:'active',suspendedUntil:null,suspensionReason:null});return false}
+    alert('Sua conta está suspensa até '+(st.suspendedUntil?new Date(st.suspendedUntil).toLocaleString('pt-BR'):'indefinidamente')+(st.suspensionReason?'\nMotivo: '+st.suspensionReason:''));await auth.signOut();return true
   }
   return false;
 }
 async function adminActorRole(){return currentUser?await getUserRole(currentUser.uid):0}
 async function findUserByUsername(username){
-  const clean=String(username||'').trim().replace(/^@/,'').toLowerCase();
-  if(!clean)return null;
-  const s=await db.ref('users').orderByChild('username').equalTo(clean).limitToFirst(1).once('value');
-  let target=null;s.forEach(x=>target={uid:x.key,...x.val()});
-  return target;
+  const clean=String(username||'').trim().replace(/^@/,'').toLowerCase();if(!clean)return null;
+  const s=await db.ref('users').orderByChild('username').equalTo(clean).limitToFirst(1).once('value');let target=null;
+  s.forEach(x=>{target={uid:x.key,...(x.val()||{})}});return target;
 }
 async function moderateUser(uid,action){
-  const me=await adminActorRole();
-  if(me!==1&&me!==2)throw new Error('Sem permissão para esta ação.');
-  if(uid===currentUser.uid)throw new Error('Você não pode aplicar esta ação à sua própria conta.');
-  const target=await getProfile(uid);
+  const me=await adminActorRole();if(me<1)throw new Error('Sem permissão para esta ação.');
+  if(!uid||uid===currentUser.uid)throw new Error('Você não pode moderar sua própria conta.');
+  const target=await getProfile(uid);const name='@'+(target.username||target.displayName||'usuário');
+  if(action==='warning')return sendAdminWarning(uid);
   if(action==='suspend'){
-    const days=Number(prompt('Suspender por quantos dias?\nDigite 0 para suspensão indefinida.', '7'));
-    if(!Number.isFinite(days)||days<0)return;
-    const reason=prompt('Motivo da suspensão (opcional):','')||'';
-    const until=days===0?0:Date.now()+days*86400000;
-    await db.ref('users/'+uid).update({status:'suspended',suspendedUntil:until,suspensionReason:reason,moderatedBy:currentUser.uid,moderatedAt:firebase.database.ServerValue.TIMESTAMP});
+    const daysRaw=prompt('Suspender por quantos dias? Digite 0 para indefinidamente.','7');if(daysRaw===null)return '';
+    const days=Number(daysRaw);if(!Number.isFinite(days)||days<0)throw new Error('Quantidade de dias inválida.');
+    const reason=prompt('Motivo da suspensão (opcional):','')||'';const until=days===0?0:Date.now()+days*86400000;
+    await db.ref('users/'+uid).update({status:'suspended',suspendedUntil:until,suspensionReason:reason,banReason:null,moderatedBy:currentUser.uid,moderatedAt:firebase.database.ServerValue.TIMESTAMP});
     await db.ref('notifications/'+uid).push({type:'warning',title:'Conta suspensa',message:'Sua conta foi suspensa '+(days===0?'indefinidamente':'por '+days+' dia(s).')+(reason?' Motivo: '+reason:''),fromUid:currentUser.uid,fromName:currentUser.displayName||'Equipe Eclipse',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});
-    return 'Conta suspensa.';
+    return name+' foi suspenso(a).';
   }
   if(action==='ban'){
-    const reason=prompt('Motivo do banimento (opcional):','')||'';
-    if(!confirm('Banir @'+(target.username||'usuário')+' permanentemente?'))return;
-    await db.ref('users/'+uid).update({status:'banned',suspendedUntil:null,banReason:reason,moderatedBy:currentUser.uid,moderatedAt:firebase.database.ServerValue.TIMESTAMP});
+    const reason=prompt('Motivo do banimento (opcional):','')||'';if(!confirm('Banir '+name+' permanentemente?'))return '';
+    await db.ref('users/'+uid).update({status:'banned',suspendedUntil:null,suspensionReason:null,banReason:reason,moderatedBy:currentUser.uid,moderatedAt:firebase.database.ServerValue.TIMESTAMP});
     await db.ref('notifications/'+uid).push({type:'warning',title:'Conta banida',message:'Sua conta foi banida do Eclipse.'+(reason?' Motivo: '+reason:''),fromUid:currentUser.uid,fromName:currentUser.displayName||'Equipe Eclipse',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});
-    return 'Conta banida.';
+    return name+' foi banido(a).';
   }
   if(action==='unsuspend'){
     await db.ref('users/'+uid).update({status:'active',suspendedUntil:null,suspensionReason:null,banReason:null});
     await db.ref('notifications/'+uid).push({type:'warning',title:'Conta reativada',message:'Sua conta foi reativada pela equipe do Eclipse.',fromUid:currentUser.uid,fromName:currentUser.displayName||'Equipe Eclipse',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});
-    return 'Conta reativada.';
+    return name+' foi reativado(a).';
   }
+  throw new Error('Ação de moderação desconhecida.');
 }
 async function sendAdminWarning(uid){
-  const me=await adminActorRole();if(me!==1&&me!==2)throw new Error('Sem permissão para enviar advertências.');
-  const p=await getProfile(uid);const text=prompt('Mensagem da advertência para @'+(p.username||'usuário')+':','Advertência da equipe do Eclipse.');
-  if(!text)return;
+  const me=await adminActorRole();if(me<1)throw new Error('Sem permissão para enviar advertências.');
+  const p=await getProfile(uid);const text=prompt('Mensagem da advertência para @'+(p.username||'usuário')+':','Advertência da equipe do Eclipse.');if(!text)return '';
   await db.ref('notifications/'+uid).push({type:'warning',title:'Advertência da equipe',message:text,fromUid:currentUser.uid,fromName:currentUser.displayName||'Equipe Eclipse',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});
-  await db.ref('warnings/'+uid).push({message:text,issuedBy:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});
-  return 'Advertência enviada.';
+  await db.ref('warnings/'+uid).push({message:text,issuedBy:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});return 'Advertência enviada.';
 }
 async function loadAdminUsers(){
-  const holder=$('adminUsersList');if(!holder)return;
-  const me=await adminActorRole();if(me!==1&&me!==2)return;
-  const s=await db.ref('users').once('value');const users=[];
-  s.forEach(x=>users.push({uid:x.key,...(x.val()||{})}));
-  users.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const holder=$('adminUsersList');if(!holder)return;const me=await adminActorRole();if(me<1)return;
+  holder.innerHTML='<p class="muted">Carregando usuários...</p>';
+  const s=await db.ref('users').once('value');const users=[];s.forEach(x=>users.push({uid:x.key,...(x.val()||{})}));users.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
   const rows=[];
   for(const u of users){
-    if(u.uid===currentUser.uid)continue;
-    const pr=await getProfile(u.uid);const role=Number(u.role||0),status=u.status||'active';
-    rows.push(`<div class="admin-user-row"><div class="person-main">${avatar(pr.photoURL,'mini-avatar')}<div><strong>${esc(pr.displayName||u.name||'Usuário')} ${roleBadge(role)}</strong><small class="muted">@${esc(pr.username||u.username||'')} · ${status==='banned'?'Banido':status==='suspended'?'Suspenso':'Ativo'}</small></div></div><div class="admin-user-actions"><button class="secondary" data-admin-action="warning" data-admin-uid="${esc(u.uid)}">⚠ Advertir</button>${status==='suspended'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Reativar</button>`:`<button class="secondary" data-admin-action="suspend" data-admin-uid="${esc(u.uid)}">⏸ Suspender</button>`}${status==='banned'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Desbanir</button>`:`<button class="danger" data-admin-action="ban" data-admin-uid="${esc(u.uid)}">⛔ Banir</button>`}</div></div>`);
+    if(u.uid===currentUser.uid)continue;const p=await getProfile(u.uid);const role=Number(u.role||0),status=u.status||'active';
+    const statusText=status==='banned'?'Banido':status==='suspended'?'Suspenso':'Ativo';
+    rows.push(`<article class="admin-user-row"><div class="person-main">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||u.name||'Usuário')} ${roleBadge(role)}</strong><small class="muted">@${esc(p.username||u.username||'')} · ${statusText}</small></div></div><div class="admin-user-actions"><button class="secondary" data-admin-action="warning" data-admin-uid="${esc(u.uid)}">⚠ Advertir</button>${status==='suspended'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Reativar</button>`:`<button class="secondary" data-admin-action="suspend" data-admin-uid="${esc(u.uid)}">⏸ Suspender</button>`}${status==='banned'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Desbanir</button>`:`<button class="danger" data-admin-action="ban" data-admin-uid="${esc(u.uid)}">⛔ Banir</button>`}</div></article>`);
   }
   holder.innerHTML=rows.join('')||'<p class="muted">Nenhum outro usuário cadastrado.</p>';
-  holder.querySelectorAll('[data-admin-action]').forEach(b=>b.onclick=async()=>{try{const r=await moderateUser(b.dataset.adminUid,b.dataset.adminAction==='warning'?'warning':b.dataset.adminAction);if(b.dataset.adminAction==='warning')await sendAdminWarning(b.dataset.adminUid);if(r)msg($('adminActionMsg'),r);await loadAdminUsers();}catch(e){alert(e.message||firebaseMessage(e))}});
+  holder.querySelectorAll('[data-admin-action]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;try{const r=await moderateUser(btn.dataset.adminUid,btn.dataset.adminAction);if(r)msg($('adminActionMsg'),r);await Promise.all([loadAdminUsers(),loadAdminStats()])}catch(e){alert(e.message||firebaseMessage(e))}finally{btn.disabled=false}});
 }
 async function loadAdminReports(){
-  const holder=$('adminReportsList');if(!holder)return;
-  const me=await adminActorRole();if(me!==1&&me!==2)return;
+  const holder=$('adminReportsList');if(!holder)return;const me=await adminActorRole();if(me<1)return;holder.innerHTML='<p class="muted">Carregando denúncias...</p>';
   const s=await db.ref('reports').orderByChild('createdAt').limitToLast(100).once('value');const reports=[];s.forEach(x=>reports.push({id:x.key,...(x.val()||{})}));reports.reverse();
-  if(!reports.length){holder.innerHTML='<p class="muted">Nenhuma denúncia registrada.</p>';return;}
-  const rows=[];
-  for(const r of reports){const reporter=await getProfile(r.reporterUid||'');const target=await getProfile(r.targetUid||'');rows.push(`<div class="admin-report-row"><div><strong>${esc(r.reason||'Denúncia')}</strong><p>${esc(r.details||'Sem detalhes.')}</p><small class="muted">Denunciado: @${esc(target.username||r.targetUid||'desconhecido')} · por @${esc(reporter.username||r.reporterUid||'desconhecido')} · ${r.createdAt?new Date(r.createdAt).toLocaleString('pt-BR'):''}</small></div><div class="admin-user-actions"><span class="report-status ${r.status==='resolved'?'resolved':''}">${r.status==='resolved'?'Resolvida':'Pendente'}</span><button class="secondary" data-report-action="resolve" data-report-id="${esc(r.id)}">✓ Resolver</button>${r.targetUid?`<button class="danger" data-report-action="ban" data-report-uid="${esc(r.targetUid)}">⛔ Banir</button>`:''}</div></div>`)}
-  holder.innerHTML=rows.join('');holder.querySelectorAll('[data-report-action="resolve"]').forEach(b=>b.onclick=async()=>{await db.ref('reports/'+b.dataset.reportId).update({status:'resolved',resolvedBy:currentUser.uid,resolvedAt:firebase.database.ServerValue.TIMESTAMP});loadAdminReports()});holder.querySelectorAll('[data-report-action="ban"]').forEach(b=>b.onclick=async()=>{try{await moderateUser(b.dataset.reportUid,'ban');loadAdminReports();loadAdminUsers()}catch(e){alert(e.message)}});
+  if(!reports.length){holder.innerHTML='<p class="muted">Nenhuma denúncia registrada.</p>';return}
+  const rows=[];for(const r of reports){const reporter=r.reporterUid?await getProfile(r.reporterUid):{};const target=r.targetUid?await getProfile(r.targetUid):{};const resolved=r.status==='resolved';rows.push(`<article class="admin-report-row"><div><div class="admin-report-head"><strong>${esc(r.reason||r.type||'Denúncia')}</strong><span class="report-status ${resolved?'resolved':''}">${resolved?'Resolvida':'Pendente'}</span></div><p>${esc(r.details||'Sem detalhes.')}</p><small class="muted">Denunciado: @${esc(target.username||r.targetUid||'desconhecido')} · por @${esc(reporter.username||r.reporterUid||'desconhecido')} · ${r.createdAt?new Date(r.createdAt).toLocaleString('pt-BR'):'—'}</small></div><div class="admin-user-actions">${!resolved?`<button class="secondary" data-report-action="resolve" data-report-id="${esc(r.id)}">✓ Resolver</button>`:''}${r.targetUid&&r.targetUid!==currentUser.uid?`<button class="danger" data-report-action="ban" data-report-uid="${esc(r.targetUid)}">⛔ Banir</button>`:''}</div></article>`)}
+  holder.innerHTML=rows.join('');
+  holder.querySelectorAll('[data-report-action="resolve"]').forEach(btn=>btn.onclick=async()=>{try{await db.ref('reports/'+btn.dataset.reportId).update({status:'resolved',resolvedBy:currentUser.uid,resolvedAt:firebase.database.ServerValue.TIMESTAMP});await Promise.all([loadAdminReports(),loadAdminStats()])}catch(e){alert(e.message||firebaseMessage(e))}});
+  holder.querySelectorAll('[data-report-action="ban"]').forEach(btn=>btn.onclick=async()=>{try{const r=await moderateUser(btn.dataset.reportUid,'ban');if(r)msg($('adminActionMsg'),r);await Promise.all([loadAdminReports(),loadAdminUsers(),loadAdminStats()])}catch(e){alert(e.message||firebaseMessage(e))}});
 }
-async function submitBugReport(e){
-  e.preventDefault();
-  if(!currentUser)return;
-  const btn=$('sendBugReport');const out=$('bugReportMsg');msg(out,'');
-  const title=$('bugTitle').value.trim();
-  const area=$('bugArea').value;
-  const description=$('bugDescription').value.trim();
-  const file=$('bugScreenshot')?.files[0];
-  if(!title||!description){msg(out,'Preencha o título e a descrição do bug.');return}
-  btn.disabled=true;btn.textContent='Enviando...';
-  try{
-    const data={uid:currentUser.uid,title,area,description,status:'pending',createdAt:firebase.database.ServerValue.TIMESTAMP,userName:currentUser.displayName||'',userEmail:currentUser.email||''};
-    if(file){
-      if(!file.type.startsWith('image/'))throw new Error('O anexo precisa ser uma imagem.');
-      const optimized=await imageFileToDataURL(file,{maxWidth:1800,maxHeight:1400,maxOutput:2200*1024});
-      const r=await uploadToR2(dataURLToBlob(optimized),'bugs',currentUser.uid,file.name||'bug.png');
-      data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type;
-    }
-    await db.ref('bugReports').push(data);
-    $('bugReportForm').reset();
-    if($('bugScreenshotName'))$('bugScreenshotName').textContent='Nenhuma imagem selecionada';
-    msg(out,'Relatório enviado. Obrigado por ajudar a melhorar o Eclipse.');
-    setTimeout(closeBugReport,900);
-  }catch(err){console.error('submitBugReport',err);msg(out,err?.message||firebaseMessage(err))}
-  finally{btn.disabled=false;btn.textContent='Enviar relatório'}
-}
-function openBugReport(){const m=$('bugReportModal');if(!m)return;m.classList.remove('hidden');m.setAttribute('aria-hidden','false');msg($('bugReportMsg'),'')}
-function closeBugReport(){const m=$('bugReportModal');if(!m)return;m.classList.add('hidden');m.setAttribute('aria-hidden','true')}
 async function loadAdminBugs(){
-  const holder=$('adminBugsList');if(!holder)return;
-  const me=await adminActorRole();if(me!==1&&me!==2)return;
-  const s=await db.ref('bugReports').orderByChild('createdAt').limitToLast(100).once('value');
-  const bugs=[];s.forEach(x=>bugs.push({id:x.key,...(x.val()||{})}));bugs.reverse();
+  const holder=$('adminBugsList');if(!holder)return;const me=await adminActorRole();if(me<1)return;holder.innerHTML='<p class="muted">Carregando bugs...</p>';
+  const s=await db.ref('bugReports').orderByChild('createdAt').limitToLast(100).once('value');const bugs=[];s.forEach(x=>bugs.push({id:x.key,...(x.val()||{})}));bugs.reverse();
   if(!bugs.length){holder.innerHTML='<p class="muted">Nenhum bug relatado até o momento.</p>';return}
   const areaNames={feed:'Feed',perfil:'Perfil',grupos:'Grupos',chat:'Chat',notificacoes:'Notificações',configuracoes:'Configurações',outro:'Outro'};
-  holder.innerHTML=bugs.map(b=>`<article class="admin-bug-row"><div class="admin-bug-main"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h4>${esc(b.title||'Bug sem título')}</h4><span class="bug-status ${b.status==='resolved'?'resolved':''}">${b.status==='resolved'?'Resolvido':'Pendente'}</span></div><small class="muted">Área: ${esc(areaNames[b.area]||b.area||'Outro')} · por ${esc(b.userName||b.userEmail||b.uid||'Usuário')} · ${b.createdAt?new Date(b.createdAt).toLocaleString('pt-BR'):'—'}</small><p>${esc(b.description||'Sem descrição.')}</p>${b.imageURL?`<a href="${esc(b.imageURL)}" target="_blank" rel="noopener"><img src="${esc(b.imageURL)}" alt="Anexo do relatório de bug"></a>`:''}</div><div class="admin-user-actions">${b.status==='resolved'?`<button class="secondary" data-bug-action="reopen" data-bug-id="${esc(b.id)}">↩ Reabrir</button>`:`<button class="secondary" data-bug-action="resolve" data-bug-id="${esc(b.id)}">✓ Marcar resolvido</button>`}</div></article>`).join('');
-  holder.querySelectorAll('[data-bug-action]').forEach(btn=>btn.onclick=async()=>{try{const action=btn.dataset.bugAction;await db.ref('bugReports/'+btn.dataset.bugId).update({status:action==='resolve'?'resolved':'pending',resolvedBy:action==='resolve'?currentUser.uid:null,resolvedAt:action==='resolve'?firebase.database.ServerValue.TIMESTAMP:null});await loadAdminBugs()}catch(e){alert('Não foi possível atualizar o bug: '+(e?.message||e))}});
-}
-
-async function loadAdminPage(){
-  const role=await refreshMyAdminUI();
-  if(role!==1&&role!==2){openPage('homePage');return;}
-  const form=$('adminRoleForm');if(form)form.classList.toggle('hidden',role!==2);
-  const note=$('adminModeratorNotice');if(note)note.classList.toggle('hidden',role!==1);
-  const access=$('adminAccessTitle');if(access)access.textContent=role===2?'Administrador':'Moderador';
-  loadAdminTeam();loadAdminUsers();loadAdminReports();
+  holder.innerHTML=bugs.map(b=>`<article class="admin-bug-row"><div class="admin-bug-main"><div class="admin-report-head"><h4>${esc(b.title||'Bug sem título')}</h4><span class="bug-status ${b.status==='resolved'?'resolved':''}">${b.status==='resolved'?'Resolvido':'Pendente'}</span></div><small class="muted">Área: ${esc(areaNames[b.area]||b.area||'Outro')} · por ${esc(b.userName||b.userEmail||b.uid||'Usuário')} · ${b.createdAt?new Date(b.createdAt).toLocaleString('pt-BR'):'—'}</small><p>${esc(b.description||'Sem descrição.')}</p>${b.imageURL?`<a href="${esc(b.imageURL)}" target="_blank" rel="noopener"><img src="${esc(b.imageURL)}" alt="Anexo do relatório de bug"></a>`:''}</div><div class="admin-user-actions">${b.status==='resolved'?`<button class="secondary" data-bug-action="reopen" data-bug-id="${esc(b.id)}">↩ Reabrir</button>`:`<button class="secondary" data-bug-action="resolve" data-bug-id="${esc(b.id)}">✓ Marcar resolvido</button>`}</div></article>`).join('');
+  holder.querySelectorAll('[data-bug-action]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;try{const resolved=btn.dataset.bugAction==='resolve';await db.ref('bugReports/'+btn.dataset.bugId).update({status:resolved?'resolved':'pending',resolvedBy:resolved?currentUser.uid:null,resolvedAt:resolved?firebase.database.ServerValue.TIMESTAMP:null});await Promise.all([loadAdminBugs(),loadAdminStats()])}catch(e){alert('Não foi possível atualizar o bug: '+(e.message||e))}finally{btn.disabled=false}});
 }
 async function loadAdminTeam(){
-  const holder=$('adminTeamList');if(!holder||!currentUser)return;
-  const me=await getUserRole(currentUser.uid);
-  if(me!==2){
-    holder.innerHTML='<p class="muted">Você pode visualizar a equipe como moderador. Somente administradores (cargo 2) podem alterar cargos.</p>';
-    return;
-  }
-  const s=await db.ref('users').once('value');
-  const entries=[];
-  s.forEach(x=>{const v=x.val()||{};const role=Number(v.role??0);entries.push({uid:x.key,...v,role})});
-  entries.sort((a,b)=>b.role-a.role || String(a.name||'').localeCompare(String(b.name||'')));
-  const rows=[];
-  for(const x of entries){
-    const pr=await getProfile(x.uid);
-    const options=[0,1,2].map(r=>`<option value="${r}" ${x.role===r?'selected':''}>${r} — ${roleName(r)}</option>`).join('');
-    rows.push(`<div class="admin-team-person">
-      <div class="person-main">${avatar(pr.photoURL,'mini-avatar')}<div><strong>${esc(pr.displayName||x.name||'Usuário')} ${roleBadge(x.role)}</strong><small class="muted">@${esc(pr.username||x.username||'')}</small></div></div>
-      <div class="admin-team-actions"><select class="admin-role-select" data-set-role="${esc(x.uid)}">${options}</select></div>
-    </div>`);
-  }
-  holder.innerHTML=rows.join('');
+  const holder=$('adminTeamList');if(!holder)return;const me=await adminActorRole();if(me<1)return;holder.innerHTML='<p class="muted">Carregando equipe...</p>';
+  const s=await db.ref('users').once('value');const entries=[];s.forEach(x=>{const v=x.val()||{};entries.push({uid:x.key,...v,role:Number(v.role||0)})});entries.sort((a,b)=>b.role-a.role||String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
+  const rows=[];for(const x of entries){const p=await getProfile(x.uid);const controls=me===2?`<select class="admin-role-select" data-set-role="${esc(x.uid)}">${[0,1,2].map(r=>`<option value="${r}" ${x.role===r?'selected':''}>${r} — ${roleName(r)}</option>`).join('')}</select>`:`<span class="muted">${roleName(x.role)}</span>`;rows.push(`<div class="admin-team-person"><div class="person-main">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.name||'Usuário')} ${roleBadge(x.role)}</strong><small class="muted">@${esc(p.username||x.username||'')}</small></div></div><div class="admin-team-actions">${controls}</div></div>`) }
+  holder.innerHTML=rows.join('')||'<p class="muted">Nenhum usuário encontrado.</p>';
   holder.querySelectorAll('[data-set-role]').forEach(sel=>sel.onchange=()=>changeUserRole(sel.dataset.setRole,Number(sel.value),sel));
 }
 async function changeUserRole(uid,role,select){
-  if(!currentUser||Number(currentUserRole)!==2)return;
-  if(![0,1,2].includes(role))return;
-  if(uid===currentUser.uid && role!==2){
-    alert('Por segurança, você não pode remover seu próprio cargo de administrador por este painel.');
-    if(select)select.value='2';
-    return;
-  }
-  const label=roleName(role);
-  if(!confirm(`Definir ${label} (cargo ${role}) para este usuário?`)){if(select)loadAdminTeam();return;}
-  try{
-    await db.ref('users/'+uid).update({role});
-    await db.ref('profiles/'+uid).update({role,adminRole:role===2?'admin':role===1?'moderator':''});
-    if(role===0)await db.ref('admin/'+uid).remove();
-    else await db.ref('admin/'+uid).update({uid,role:role===2?'admin':'moderator',roleNumber:role,assignedBy:currentUser.uid,updatedAt:firebase.database.ServerValue.TIMESTAMP});
-    await loadAdminTeam();
-  }catch(e){alert('Não foi possível alterar o cargo: '+(e?.message||e));if(select)loadAdminTeam();}
+  if(await adminActorRole()!==2)throw new Error('Somente administradores (cargo 2) podem alterar cargos.');
+  if(![0,1,2].includes(role))throw new Error('Cargo inválido.');
+  if(uid===currentUser.uid&&role!==2){if(select)select.value='2';throw new Error('Você não pode remover seu próprio cargo de administrador.');}
+  if(!confirm('Alterar o cargo deste usuário para '+roleName(role)+'?')){await loadAdminTeam();return}
+  const updates={};updates['users/'+uid+'/role']=role;updates['profiles/'+uid+'/role']=role;updates['profiles/'+uid+'/adminRole']=role===2?'admin':role===1?'moderator':'';
+  if(role===0)updates['admin/'+uid]=null;else updates['admin/'+uid]={uid,role:role===2?'admin':'moderator',roleNumber:role,assignedBy:currentUser.uid,updatedAt:firebase.database.ServerValue.TIMESTAMP};
+  await db.ref().update(updates);await loadAdminTeam();await loadAdminStats();
 }
 async function addAdminRole(e){
-  e.preventDefault();
-  const msgEl=$('adminRoleMsg');msg(msgEl,'');
-  const role=Number($('adminTargetRole').value);
-  const username=$('adminTargetUsername').value.trim().replace(/^@/,'').toLowerCase();
-  if(!username)return;
-  const me=await getUserRole(currentUser.uid);
-  if(me!==2){msg(msgEl,'Somente administradores (cargo 2) podem alterar cargos.');return;}
-  if(role!==1&&role!==2){msg(msgEl,'Escolha um cargo válido.');return;}
-  try{
-    const s=await db.ref('users').orderByChild('username').equalTo(username).limitToFirst(1).once('value');
-    let target=null;s.forEach(x=>target={uid:x.key,...x.val()});
-    if(!target){msg(msgEl,'Usuário não encontrado. Verifique o username.');return;}
-    await db.ref('users/'+target.uid).update({role});
-    await db.ref('profiles/'+target.uid).update({role,adminRole:role===2?'admin':'moderator'});
-    await db.ref('admin/'+target.uid).set({uid:target.uid,role:role===2?'admin':'moderator',roleNumber:role,assignedBy:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});
-    msg(msgEl,role===2?'Administrador adicionado (cargo 2).':'Moderador adicionado (cargo 1).');
-    $('adminTargetUsername').value='';
-    await loadAdminTeam();
-  }catch(err){msg(msgEl,'Não foi possível alterar o cargo: '+(err?.message||err));}
+  e.preventDefault();const out=$('adminRoleMsg');msg(out,'');if(await adminActorRole()!==2){msg(out,'Somente administradores podem alterar cargos.');return}
+  const username=$('adminTargetUsername').value.trim().replace(/^@/,'').toLowerCase();const role=Number($('adminTargetRole').value);if(!username){msg(out,'Informe o username.');return}if(![1,2].includes(role)){msg(out,'Escolha um cargo válido.');return}
+  try{const target=await findUserByUsername(username);if(!target){msg(out,'Usuário não encontrado.');return}await changeUserRole(target.uid,role);$('adminTargetUsername').value='';msg(out,username+' agora é '+roleName(role)+'.')}catch(err){msg(out,err.message||firebaseMessage(err))}
+}
+async function loadAdminPage(){
+  const role=await refreshMyAdminUI();if(role<1){alert('Acesso restrito à equipe administrativa.');openPage('homePage');return}
+  $('adminAccessTitle')&&($('adminAccessTitle').textContent=role===2?'Administrador':'Moderador');
+  $('adminRoleForm')?.classList.toggle('hidden',role!==2);$('adminModeratorNotice')?.classList.toggle('hidden',role!==1);bindAdminTabs();showAdminTab('overview');
+  try{await loadAdminStats();await loadAdminUsers();await loadAdminReports();await loadAdminBugs();await loadAdminTeam()}catch(e){console.error('loadAdminPage',e);alert('Não foi possível carregar o painel administrativo: '+(e.message||e))}
 }
 async function submitBugReport(e){
-  e.preventDefault();
-  if(!currentUser)return;
-  const btn=$('sendBugReport');const out=$('bugReportMsg');msg(out,'');
-  const title=$('bugTitle').value.trim();
-  const area=$('bugArea').value;
-  const description=$('bugDescription').value.trim();
-  const file=$('bugScreenshot')?.files[0];
-  if(!title||!description){msg(out,'Preencha o título e a descrição do bug.');return}
-  btn.disabled=true;btn.textContent='Enviando...';
-  try{
-    const data={uid:currentUser.uid,title,area,description,status:'pending',createdAt:firebase.database.ServerValue.TIMESTAMP,userName:currentUser.displayName||'',userEmail:currentUser.email||''};
-    if(file){
-      if(!file.type.startsWith('image/'))throw new Error('O anexo precisa ser uma imagem.');
-      const optimized=await imageFileToDataURL(file,{maxWidth:1800,maxHeight:1400,maxOutput:2200*1024});
-      const r=await uploadToR2(dataURLToBlob(optimized),'bugs',currentUser.uid,file.name||'bug.png');
-      data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type;
-    }
-    await db.ref('bugReports').push(data);
-    $('bugReportForm').reset();
-    if($('bugScreenshotName'))$('bugScreenshotName').textContent='Nenhuma imagem selecionada';
-    msg(out,'Relatório enviado. Obrigado por ajudar a melhorar o Eclipse.');
-    setTimeout(closeBugReport,900);
-  }catch(err){console.error('submitBugReport',err);msg(out,err?.message||firebaseMessage(err))}
-  finally{btn.disabled=false;btn.textContent='Enviar relatório'}
+  e.preventDefault();if(!currentUser)return;const btn=$('sendBugReport'),out=$('bugReportMsg');msg(out,'');const title=$('bugTitle').value.trim(),area=$('bugArea').value,description=$('bugDescription').value.trim(),file=$('bugScreenshot')?.files[0];if(!title||!description){msg(out,'Preencha o título e a descrição do bug.');return}btn.disabled=true;btn.textContent='Enviando...';
+  try{const data={uid:currentUser.uid,title,area,description,status:'pending',createdAt:firebase.database.ServerValue.TIMESTAMP,userName:currentUser.displayName||'',userEmail:currentUser.email||''};if(file){if(!file.type.startsWith('image/'))throw new Error('O anexo precisa ser uma imagem.');const optimized=await imageFileToDataURL(file,{maxWidth:1800,maxHeight:1400,maxOutput:2200*1024});const r=await uploadToR2(dataURLToBlob(optimized),'bugs',currentUser.uid,file.name||'bug.png');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}await db.ref('bugReports').push(data);$('bugReportForm').reset();if($('bugScreenshotName'))$('bugScreenshotName').textContent='Nenhuma imagem selecionada';msg(out,'Relatório enviado. Obrigado por ajudar a melhorar o Eclipse.');setTimeout(closeBugReport,900)}catch(err){console.error('submitBugReport',err);msg(out,err?.message||firebaseMessage(err))}finally{btn.disabled=false;btn.textContent='Enviar relatório'}
 }
 function openBugReport(){const m=$('bugReportModal');if(!m)return;m.classList.remove('hidden');m.setAttribute('aria-hidden','false');msg($('bugReportMsg'),'')}
 function closeBugReport(){const m=$('bugReportModal');if(!m)return;m.classList.add('hidden');m.setAttribute('aria-hidden','true')}
-async function loadAdminBugs(){
-  const holder=$('adminBugsList');if(!holder)return;
-  const me=await adminActorRole();if(me!==1&&me!==2)return;
-  const s=await db.ref('bugReports').orderByChild('createdAt').limitToLast(100).once('value');
-  const bugs=[];s.forEach(x=>bugs.push({id:x.key,...(x.val()||{})}));bugs.reverse();
-  if(!bugs.length){holder.innerHTML='<p class="muted">Nenhum bug relatado até o momento.</p>';return}
-  const areaNames={feed:'Feed',perfil:'Perfil',grupos:'Grupos',chat:'Chat',notificacoes:'Notificações',configuracoes:'Configurações',outro:'Outro'};
-  holder.innerHTML=bugs.map(b=>`<article class="admin-bug-row"><div class="admin-bug-main"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h4>${esc(b.title||'Bug sem título')}</h4><span class="bug-status ${b.status==='resolved'?'resolved':''}">${b.status==='resolved'?'Resolvido':'Pendente'}</span></div><small class="muted">Área: ${esc(areaNames[b.area]||b.area||'Outro')} · por ${esc(b.userName||b.userEmail||b.uid||'Usuário')} · ${b.createdAt?new Date(b.createdAt).toLocaleString('pt-BR'):'—'}</small><p>${esc(b.description||'Sem descrição.')}</p>${b.imageURL?`<a href="${esc(b.imageURL)}" target="_blank" rel="noopener"><img src="${esc(b.imageURL)}" alt="Anexo do relatório de bug"></a>`:''}</div><div class="admin-user-actions">${b.status==='resolved'?`<button class="secondary" data-bug-action="reopen" data-bug-id="${esc(b.id)}">↩ Reabrir</button>`:`<button class="secondary" data-bug-action="resolve" data-bug-id="${esc(b.id)}">✓ Marcar resolvido</button>`}</div></article>`).join('');
-  holder.querySelectorAll('[data-bug-action]').forEach(btn=>btn.onclick=async()=>{try{const action=btn.dataset.bugAction;await db.ref('bugReports/'+btn.dataset.bugId).update({status:action==='resolve'?'resolved':'pending',resolvedBy:action==='resolve'?currentUser.uid:null,resolvedAt:action==='resolve'?firebase.database.ServerValue.TIMESTAMP:null});await loadAdminBugs()}catch(e){alert('Não foi possível atualizar o bug: '+(e?.message||e))}});
-}
 
-async function loadAdminPage(){
-  const role=await refreshMyAdminUI();
-  if(role!==1&&role!==2){openPage('homePage');return;}
-  const form=$('adminRoleForm');if(form)form.classList.toggle('hidden',role!==2);
-  const note=$('adminModeratorNotice');if(note)note.classList.toggle('hidden',role!==1);
-  bindAdminTabs();
-  await Promise.all([loadAdminStats(),loadAdminTeam(),loadAdminUsers(),loadAdminReports(),loadAdminBugs()]);
-}
 function bindNavigation(){
  document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();show(b.dataset.screen)}));
- document.querySelectorAll('#mainNav [data-page],.top-icon').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));
+ document.querySelectorAll('#mainNav [data-page],#adminNavItem,.top-icon').forEach(b=>b.addEventListener('click',()=>openPage(b.dataset.page)));
  $('topProfile').onclick=()=>openPage('profilePage'); $('mobileMenu').onclick=()=>{$('sidebar').classList.add('open');$('mobileOverlay').classList.remove('hidden')};$('mobileClose').onclick=closeMobile;$('mobileOverlay').onclick=closeMobile;
 }
 function openPage(id){
   document.querySelectorAll('.dash-page').forEach(p=>p.classList.add('hidden'));
   $(id)?.classList.remove('hidden');
-  document.querySelectorAll('#mainNav [data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  document.querySelectorAll('#mainNav [data-page],#adminNavItem').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
   closeMobile();
   if(id==='homePage')loadHome();
   if(id==='profilePage')renderOwnProfile();

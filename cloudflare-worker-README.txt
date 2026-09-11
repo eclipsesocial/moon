@@ -12,3 +12,6 @@ CORREÇÃO DO R2 — PUBLICAÇÕES E STORIES
    https://dry-limit-e851.eclipsesocialoficial.workers.dev
 
 Esta versão retorna o erro real do R2 em "details", facilitando diagnóstico.
+
+
+IMPORTANTE: se aparecer 'R2 não está conectado ao Worker', o código do Worker está funcionando, mas o binding não foi configurado. Isso é feito no painel do Cloudflare e não pelo HTML/JavaScript do Eclipse. O nome da variável precisa ser exatamente R2.
