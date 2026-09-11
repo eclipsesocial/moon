@@ -116,6 +116,58 @@
     </div>
   </div>
 </div>
+<div id="adminPage" class="dash-page hidden">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <div><span class="admin-eyebrow">CONTROLE DO ECLIPSE</span><h2>Painel administrativo</h2><p class="muted">Central de administração, moderação, denúncias e suporte.</p></div>
+      <span id="myAdminBadge" class="role-badge role-admin">🛡 Administrador</span>
+    </div>
+    <nav class="admin-tabs" aria-label="Seções administrativas">
+      <button class="admin-tab active" data-admin-tab="overview">▦ Visão geral</button>
+      <button class="admin-tab" data-admin-tab="users">👥 Usuários</button>
+      <button class="admin-tab" data-admin-tab="reports">⚑ Denúncias</button>
+      <button class="admin-tab" data-admin-tab="bugs">🐞 Bugs Relatados</button>
+      <button class="admin-tab" data-admin-tab="team">🛡 Equipe</button>
+    </nav>
+
+    <section id="adminOverviewTab" class="admin-tab-panel">
+      <div class="admin-stat-grid">
+        <div class="card admin-stat"><span>👥</span><strong id="adminStatUsers">—</strong><small>Usuários</small></div>
+        <div class="card admin-stat"><span>⚑</span><strong id="adminStatReports">—</strong><small>Denúncias pendentes</small></div>
+        <div class="card admin-stat"><span>🐞</span><strong id="adminStatBugs">—</strong><small>Bugs pendentes</small></div>
+        <div class="card admin-stat"><span>🛡</span><strong id="adminStatTeam">—</strong><small>Equipe administrativa</small></div>
+      </div>
+      <div class="card admin-card admin-overview-card"><h3>Permissões</h3><div class="admin-permission-list">
+        <div><span>🛡</span><div><strong>Administrador</strong><small>Gerencia cargos, usuários, moderação, denúncias e bugs.</small></div></div>
+        <div><span>🛡</span><div><strong>Moderador</strong><small>Suspende, bane, envia advertências, analisa denúncias e bugs.</small></div></div>
+        <div><span>◎</span><div><strong>Usuário</strong><small>Acesso normal à rede social.</small></div></div>
+      </div></div>
+    </section>
+
+    <section id="adminUsersTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">MODERAÇÃO</span><h3>Gerenciar usuários</h3></div><span>🛡</span></div><p class="muted">Suspenda, bana, reative ou envie advertências.</p><div id="adminActionMsg" class="message"></div><div id="adminUsersList" class="admin-users-list"><p class="muted">Carregando usuários...</p></div></div>
+    </section>
+
+    <section id="adminReportsTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">DENÚNCIAS</span><h3>Verificar denúncias</h3></div><span>⚑</span></div><p class="muted">Analise denúncias de perfis e conteúdos.</p><div id="adminReportsList" class="admin-reports-list"><p class="muted">Carregando denúncias...</p></div></div>
+    </section>
+
+    <section id="adminBugsTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">SUPORTE</span><h3>Bugs Relatados</h3></div><span>🐞</span></div><p class="muted">Receba, analise e resolva os problemas enviados pelos usuários.</p><div id="adminBugsList" class="admin-bugs-list"><p class="muted">Carregando bugs...</p></div></div>
+    </section>
+
+    <section id="adminTeamTab" class="admin-tab-panel hidden">
+      <div class="admin-grid">
+        <div class="card admin-card"><h3>Dar cargo</h3><p class="muted">Somente administradores podem alterar cargos.</p><form id="adminRoleForm"><label>Username<input id="adminTargetUsername" placeholder="@username" required></label><label>Cargo<select id="adminTargetRole"><option value="1">🛡 Moderador</option><option value="2">🛡 Administrador</option></select></label><button class="primary" type="submit">Salvar cargo</button><div id="adminRoleMsg" class="message"></div></form><div id="adminModeratorNotice" class="message hidden">Somente administradores podem alterar cargos.</div></div>
+        <div class="card admin-card"><h3>Equipe do site</h3><p class="muted">Equipe responsável pela administração e moderação do Eclipse.</p><div id="adminTeamList" class="list"><p class="muted">Carregando...</p></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+</div></section>
+</div>
+<div id="chatLauncher" class="chat-launcher"><button id="openChatBar" class="chat-launcher-btn">💬 <span>Mensagens</span></button><div id="chatFriendsBar" class="chat-friends-bar hidden"></div></div><div id="messageDock" class="message-dock hidden"><div class="message-window"><div class="message-head"><div><span id="chatAvatar" class="mini-avatar">☾</span><div><strong id="chatName">Mensagens</strong><small id="chatStatus">Eclipse</small></div></div><button id="closeChat">×</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-input"><input id="chatText" placeholder="Digite uma mensagem..." autocomplete="off"><button type="submit">➤</button></form></div></div>
 <div id="bugReportModal" class="modal hidden" aria-hidden="true">
   <div class="modal-card bug-report-card">
     <button class="modal-close" id="closeBugReport" type="button">×</button>
