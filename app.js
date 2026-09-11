@@ -194,7 +194,7 @@ async function loadAdminUsers(){
   const s=await db.ref('users').once('value');const users=[];s.forEach(x=>users.push({uid:x.key,...(x.val()||{})}));users.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
   const rows=[];
   for(const u of users){
-    const p=await getProfile(u.uid);const role=Number(u.role||0),status=u.status||'active';
+    if(u.uid===currentUser.uid)continue;const p=await getProfile(u.uid);const role=Number(u.role||0),status=u.status||'active';
     const statusText=status==='banned'?'Banido':status==='suspended'?'Suspenso':'Ativo';
     rows.push(`<article class="admin-user-row"><div class="person-main">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||u.name||'Usuário')} ${roleBadge(role)}</strong><small class="muted">@${esc(p.username||u.username||'')} · ${statusText}</small></div></div><div class="admin-user-actions"><button class="secondary" data-admin-action="warning" data-admin-uid="${esc(u.uid)}">⚠ Advertir</button>${status==='suspended'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Reativar</button>`:`<button class="secondary" data-admin-action="suspend" data-admin-uid="${esc(u.uid)}">⏸ Suspender</button>`}${status==='banned'?`<button class="secondary" data-admin-action="unsuspend" data-admin-uid="${esc(u.uid)}">✓ Desbanir</button>`:`<button class="danger" data-admin-action="ban" data-admin-uid="${esc(u.uid)}">⛔ Banir</button>`}</div></article>`);
   }
@@ -306,163 +306,71 @@ async function toggleLike(id){const ref=db.ref('posts/'+id),snap=await ref.once(
 async function toggleComments(id,forceReload=false){const box=$('comments-'+id);if(!box)return;if(box.classList.contains('loaded')&&!forceReload){box.classList.toggle('open');return}const s=await db.ref('comments/'+id).orderByChild('createdAt').once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));box.innerHTML=`<div class="comments-list">${a.map(c=>`<div class="comment"><div><strong>${esc(c.name||'Usuário')}</strong><span>${esc(c.text)}</span></div>${canManageContent(c.uid)?`<button class="comment-delete" title="Apagar comentário" data-delete-comment="${c.id}" data-delete-comment-post="${id}">Apagar</button>`:''}</div>`).join('')}</div><form class="comment-form" data-comment-form="${id}"><input placeholder="Escreva um comentário..." required><button>Enviar</button></form>`;box.classList.add('loaded','open');box.querySelectorAll('[data-delete-comment]').forEach(b=>b.onclick=()=>deleteComment(b.dataset.deleteCommentPost,b.dataset.deleteComment));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.target.querySelector('input'),text=input.value.trim();if(!text)return;await db.ref('comments/'+id).push({uid:currentUser.uid,name:currentUser.displayName||currentProfile?.displayName||'Usuário',text,createdAt:firebase.database.ServerValue.TIMESTAMP});const p=await db.ref('posts/'+id).once('value');await db.ref('posts/'+id).update({commentsCount:(p.val()?.commentsCount||0)+1});await toggleComments(id,true)};}
 async function sharePost(id){const p=await db.ref('posts/'+id).once('value');if(!p.exists())return;const v=p.val();await db.ref('shares/'+id).push({uid:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('posts/'+id).update({sharesCount:(v.sharesCount||0)+1});alert('Publicação compartilhada.');loadFeed()}
 async function loadStories(){
-  const root=$('storiesList');
-  if(!root||!currentUser||!db)return;
-  root.innerHTML='<div class="muted story-loading">Carregando stories...</div>';
   const now=Date.now();
-  try{
-    const [statusSnap,friendSnap]=await Promise.all([
-      db.ref('statuses').once('value'),
-      db.ref('friendships/'+currentUser.uid).once('value')
-    ]);
-    const friendIds=new Set(Object.keys(friendSnap.val()||{}));
-    friendIds.add(currentUser.uid);
-    const byUser=new Map();
-    const expired=[];
-    statusSnap.forEach(child=>{
-      const v=child.val()||{};
-      const uid=String(v.uid||'');
-      if(!uid||!friendIds.has(uid))return;
-      const created=Number(v.createdAt||0);
-      const expires=Number(v.expiresAt||0) || (created ? created+86400000 : 0);
-      if(expires && expires<=now){ expired.push(child.key); return; }
-      if(!v.imageURL&&!v.videoURL&&!String(v.text||'').trim())return;
-      const item={id:child.key,...v,createdAt:created||now,expiresAt:expires};
-      if(!byUser.has(uid))byUser.set(uid,[]);
-      byUser.get(uid).push(item);
-    });
-    if(expired.length){
-      const cleanup={}; expired.slice(0,100).forEach(id=>cleanup['statuses/'+id]=null);
-      db.ref().update(cleanup).catch(()=>{});
-    }
-    const users=[...byUser.keys()];
-    const profiles={};
-    await Promise.all(users.map(async uid=>{
-      profiles[uid]=uid===currentUser.uid?(currentProfile||await getProfile(uid)):await getProfile(uid);
-    }));
-    storyItems=[];
-    for(const uid of users){
-      const list=byUser.get(uid).sort((a,b)=>a.createdAt-b.createdAt);
-      list.forEach(x=>storyItems.push({...x,profile:profiles[uid]||{}}));
-    }
-    storyItems.sort((a,b)=>{
-      const ao=a.uid===currentUser.uid?0:1,bo=b.uid===currentUser.uid?0:1;
-      return ao-bo || b.createdAt-a.createdAt;
-    });
-    if(!storyItems.length){
-      root.innerHTML='<div class="muted story-empty">Nenhum story disponível. Publique o primeiro.</div>';
-      return;
-    }
-    const cards=[];
-    const seen=new Set();
-    for(const x of storyItems){
-      if(seen.has(x.uid))continue;
-      seen.add(x.uid);
-      const p=x.profile||{};
-      const count=storyItems.filter(y=>y.uid===x.uid).length;
-      const thumb=x.imageURL?`<img src="${esc(x.imageURL)}" alt="">`:x.videoURL?`<video src="${esc(x.videoURL)}" muted playsinline preload="metadata"></video>`:`<div class="story-text-preview">${esc(x.text||'Story')}</div>`;
-      cards.push(`<button type="button" class="story-card ${x.uid===currentUser.uid?'own-story':''}" data-story-uid="${esc(x.uid)}">
-        ${thumb}
-        <span class="story-card-shade"></span>
-        <span class="story-avatar">${p.photoURL?`<img src="${esc(p.photoURL)}" alt="">`:'☾'}</span>
-        <strong>${x.uid===currentUser.uid?'Seu story':esc(p.displayName||x.displayName||'Usuário')}</strong>
-        ${count>1?`<span class="story-count">${count}</span>`:''}
-      </button>`);
-    }
-    root.innerHTML=cards.join('');
-    root.querySelectorAll('[data-story-uid]').forEach(btn=>{
-      btn.onclick=()=>{
-        const uid=btn.dataset.storyUid;
-        const first=storyItems.findIndex(x=>x.uid===uid);
-        if(first>=0)openStoryViewer(first);
-      };
-    });
-  }catch(e){
-    console.error('loadStories',e);
-    root.innerHTML='<div class="muted story-empty">Não foi possível carregar os stories.</div>';
+  const [statusSnap,friendSnap]=await Promise.all([
+    db.ref('statuses').orderByChild('createdAt').limitToLast(80).once('value'),
+    db.ref('friendships/'+currentUser.uid).once('value')
+  ]);
+  const friendIds=new Set(Object.keys(friendSnap.val()||{})); friendIds.add(currentUser.uid);
+  const arr=[];
+  statusSnap.forEach(x=>{
+    const v=x.val()||{}, created=Number(v.createdAt||0), expires=Number(v.expiresAt||0);
+    if((!expires||expires>now) && friendIds.has(v.uid)) arr.push({id:x.key,...v});
+  });
+  arr.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const profiles={};
+  for(const x of arr){
+    if(x.uid===currentUser.uid) profiles[x.uid]=currentProfile||await getProfile(x.uid);
+    else profiles[x.uid]??=await getProfile(x.uid);
   }
+  storyItems=arr.map(x=>({...x,profile:profiles[x.uid]||{}}));
+  // O story do usuário logado deve sempre ficar visível na própria barra,
+  // independentemente de ele possuir uma entrada em friendships.
+  storyItems.sort((a,b)=>{
+    const ao=a.uid===currentUser.uid?0:1, bo=b.uid===currentUser.uid?0:1;
+    return ao-bo || ((a.createdAt||0)-(b.createdAt||0));
+  });
+  const groups=[];
+  const seen=new Set();
+  for(const x of storyItems){
+    if(seen.has(x.uid))continue; seen.add(x.uid);
+    const p=x.profile||{};
+    groups.push(`<button class="story-card" data-story-index="${storyItems.findIndex(y=>y.uid===x.uid)}">
+      ${x.imageURL?`<img src="${esc(x.imageURL)}" alt="">`:x.videoURL?`<div class="story-media-placeholder">▶</div>`:`<div class="story-text-preview">${esc(x.text||'Story')}</div>`}
+      <div class="story-avatar">${p.photoURL?`<img src="${esc(p.photoURL)}" alt="">`:'☾'}</div>
+      <strong>${x.uid===currentUser.uid?'Seu story':esc(p.displayName||x.displayName||'Amigo')}</strong>
+    </button>`);
+  }
+  $('storiesList').innerHTML=groups.join('')||'<div class="muted">Seus amigos ainda não publicaram stories.</div>';
+  $('storiesList').querySelectorAll('[data-story-index]').forEach(b=>b.onclick=()=>openStoryViewer(Number(b.dataset.storyIndex)));
 }
 async function openStoryViewer(index){
   if(!storyItems.length)return;
   activeStoryIndex=Math.max(0,Math.min(index,storyItems.length-1));
-  const m=$('storyViewerModal');if(!m)return;
-  m.classList.remove('hidden');m.setAttribute('aria-hidden','false');
-  document.body.classList.add('story-open');
-  renderStoryViewer();
+  const m=$('storyViewerModal'); if(!m)return;
+  m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); renderStoryViewer();
 }
-function closeStoryViewer(){
-  const m=$('storyViewerModal');
-  if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true')}
-  document.body.classList.remove('story-open');
-  const v=document.querySelector('#storyViewerContent video');if(v){v.pause();v.removeAttribute('src');v.load()}
-}
+function closeStoryViewer(){const m=$('storyViewerModal');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true')}}
 function renderStoryViewer(){
-  const x=storyItems[activeStoryIndex];if(!x)return;
+  const x=storyItems[activeStoryIndex]; if(!x)return;
   const p=x.profile||{};
-  const own=x.uid===currentUser.uid;
-  const userStories=storyItems.filter(y=>y.uid===x.uid);
-  const pos=userStories.findIndex(y=>y.id===x.id)+1;
   const media=x.videoURL?`<video class="story-view-media" src="${esc(x.videoURL)}" controls autoplay playsinline></video>`:x.imageURL?`<img class="story-view-media" src="${esc(x.imageURL)}" alt="Story">`:'';
-  $('storyViewerContent').innerHTML=`
-    <div class="story-progress">${userStories.map((_,i)=>`<span class="${i<pos?'done':''}"></span>`).join('')}</div>
-    <div class="story-view-head">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.displayName||'Usuário')}${own?' · Seu story':''}</strong><small>@${esc(p.username||'')}</small></div><span class="story-time">${formatRelativeTime(x.createdAt)}</span></div>
-    <div class="story-view-body">${media}${x.text?`<div class="story-view-text">${esc(x.text)}</div>`:''}</div>
-    <div class="story-view-actions">
-      <button class="secondary" id="storyPrev" type="button">‹ Anterior</button>
-      <button class="secondary" id="storyNext" type="button">Próximo ›</button>
-      ${own?`<button class="danger" id="storyDelete" type="button">Excluir</button>`:''}
-    </div>`;
-  $('storyPrev').disabled=activeStoryIndex<=0;
-  $('storyNext').disabled=activeStoryIndex>=storyItems.length-1;
+  const own=x.uid===currentUser.uid;
+  $('storyViewerContent').innerHTML=`<div class="story-view-head">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></div><span class="story-time">${formatRelativeTime(x.createdAt)}</span></div><div class="story-view-body">${media}${x.text?`<div class="story-view-text">${esc(x.text)}</div>`:''}</div><div class="story-view-actions"><button class="secondary" id="storyPrev">‹ Anterior</button><button class="secondary" id="storyNext">Próximo ›</button>${own?`<button class="danger" id="storyDelete">Excluir</button>`:''}</div>`;
   $('storyPrev').onclick=()=>{if(activeStoryIndex>0){activeStoryIndex--;renderStoryViewer()}};
   $('storyNext').onclick=()=>{if(activeStoryIndex<storyItems.length-1){activeStoryIndex++;renderStoryViewer()}};
   $('storyDelete')?.addEventListener('click',deleteActiveStory);
 }
 async function deleteActiveStory(){
-  const x=storyItems[activeStoryIndex];
-  if(!x||x.uid!==currentUser.uid)return;
+  const x=storyItems[activeStoryIndex]; if(!x||x.uid!==currentUser.uid)return;
   if(!confirm('Excluir este story?'))return;
-  try{
-    if(x.mediaKey)await deleteFromR2(x.mediaKey);
-    await db.ref('statuses/'+x.id).remove();
-    storyItems.splice(activeStoryIndex,1);
-    if(!storyItems.length){closeStoryViewer();await loadStories();return}
-    activeStoryIndex=Math.min(activeStoryIndex,storyItems.length-1);
-    renderStoryViewer();await loadStories();
-  }catch(e){alert('Não foi possível excluir o story: '+firebaseMessage(e))}
+  try{if(x.mediaKey)await deleteFromR2(x.mediaKey);await db.ref('statuses/'+x.id).remove();storyItems.splice(activeStoryIndex,1);if(!storyItems.length){closeStoryViewer();await loadStories();return}activeStoryIndex=Math.min(activeStoryIndex,storyItems.length-1);renderStoryViewer();await loadStories()}catch(e){alert('Não foi possível excluir o story: '+firebaseMessage(e))}
 }
 async function loadSuggestions(){const s=await db.ref('profiles').limitToFirst(20).once('value');const arr=[];s.forEach(x=>{if(x.key!==currentUser.uid)arr.push({uid:x.key,...x.val()})});$('suggestionsList').innerHTML=arr.slice(0,5).map(x=>`<div class="suggestion"><button class="suggestion-person" data-profile-uid="${x.uid}">${avatar(x.photoURL,'mini-avatar')}<span><strong>${esc(x.displayName||'Usuário')}</strong><small>@${esc(x.username||'')}</small></span></button><button class="add-friend" data-add-friend="${x.uid}">Adicionar</button></div>`).join('')||'<p class="muted">Nenhuma sugestão encontrada.</p>';document.querySelectorAll('[data-add-friend]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.addFriend,b));document.querySelectorAll('.suggestion-person').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 function bindFeed(){$('closeStoryViewer')?.addEventListener('click',closeStoryViewer);$('storyViewerModal')?.addEventListener('click',e=>{if(e.target.id==='storyViewerModal')closeStoryViewer()});$('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
 function openModal(id){$(id)?.classList.remove('hidden')}
 async function publishPost(){const text=$('postText').value.trim(),file=$('postImage').files[0];if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,likesCount:0,commentsCount:0,sharesCount:0,reactions:{}};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1400,maxHeight:1400,maxOutput:1800*1024});r=await uploadToR2(dataURLToBlob(optimized),'posts',currentUser.uid,file.name||'foto.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'videos',currentUser.uid,file.name||'video.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('posts').push(data);$('postText').value='';$('postImage').value='';if($('postMediaName'))$('postMediaName').textContent='Nenhuma mídia selecionada';$('postModal').classList.add('hidden');await loadHome()}catch(e){msg($('postMsg'),'Não foi possível publicar: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar'}}
-async function publishStory(){
-  const text=String($('storyText')?.value||'').trim();
-  const file=$('storyImage')?.files?.[0]||null;
-  if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}
-  const b=$('publishStoryBtn');if(b){b.disabled=true;b.textContent='Publicando...'}
-  try{
-    const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,expiresAt:Date.now()+86400000};
-    if(file){
-      if(file.size>100*1024*1024)throw new Error('O arquivo deve ter no máximo 100 MB.');
-      if(file.type.startsWith('image/')){
-        const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1800*1024});
-        const r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');
-        data.imageURL=r.url;data.mediaKey=r.key;data.mediaType='image';
-      }else if(file.type.startsWith('video/')){
-        const r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');
-        data.videoURL=r.url;data.mediaKey=r.key;data.mediaType='video';
-      }else throw new Error('Formato não suportado. Use JPG, PNG, WEBP, MP4, WEBM ou MOV.');
-    }
-    await db.ref('statuses').push(data);
-    if($('storyText'))$('storyText').value='';
-    if($('storyImage'))$('storyImage').value='';
-    if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';
-    $('storyModal')?.classList.add('hidden');
-    await loadStories();
-  }catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}
-  finally{if(b){b.disabled=false;b.textContent='Publicar story'}}
-}
-async function renderOwnProfile(){activeProfileUid=currentUser.uid;const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
+async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishStoryBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,expiresAt:Date.now()+24*60*60*1000};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1600*1024});r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('statuses').push(data);$('storyText').value='';$('storyImage').value='';if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';$('storyModal').classList.add('hidden');await loadHome()}catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar story'}}async function renderOwnProfile(){activeProfileUid=currentUser.uid;const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
 async function viewProfile(uid){
   if(!uid)return;
   activeProfileUid=uid;
@@ -484,78 +392,15 @@ function relationshipDisplay(p){
   if(p.relationshipPartnerUid) return `${esc(base)} · <button class="inline-profile-link" data-profile-uid="${esc(p.relationshipPartnerUid)}">${esc(p.relationshipPartnerName||'Pessoa marcada')}</button>`;
   return esc(base);
 }
-function profileHTML(p,isOwn=false){
- const username=String(p.username||'').replace(/^@/,'').trim();
- const uid=p.uid||activeProfileUid;
- return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}${isOwn?`<button class="profile-photo-action profile-cover-action" id="profileCoverAction" title="Trocar foto de capa" aria-label="Trocar foto de capa">📷</button>`:''}</div>
- <div class="profile-main">
-  <div class="profile-head"><div class="profile-avatar-wrap"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div>${isOwn?`<button class="profile-photo-action profile-avatar-action" id="profilePhotoAction" title="Trocar foto de perfil" aria-label="Trocar foto de perfil">📷</button>`:''}</div>
-   <div class="profile-name"><h1>${esc(p.displayName||'Usuário')}${roleBadge(p.role)}</h1><p class="profile-username">@${esc(username||'usuário')}</p></div>
-   <div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(uid)}">Mensagem</button><button class="secondary profile-report-btn" id="profileReport" data-uid="${esc(uid)}">⚑ Denunciar</button><button class="danger profile-block-btn" id="profileBlock" data-uid="${esc(uid)}">⛔ Bloquear</button>`}</div>
-  </div>
-  <div class="profile-nav"><button class="active" data-profile-tab="posts">Publicações</button><button data-profile-tab="about">Sobre</button><button data-profile-tab="photos">Fotos</button><button data-profile-tab="friends">Amigos</button></div>
-  <div id="profileTabContent"><div class="profile-publications card"><div class="profile-section-title"><h3>Publicações</h3></div><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div>
- </div></div>`
-}
-async function canViewFriends(uid){
- if(uid===currentUser.uid)return true;
- const s=await db.ref('privacySettings/'+uid+'/friends').once('value');
- return (s.val()||'public')!=='no';
-}
-async function loadProfileTab(tab){
- const uid=activeProfileUid||currentUser.uid, p=await getProfile(uid), root=$('profileTabContent'); if(!p||!root)return;
- document.querySelectorAll('#profilePage [data-profile-tab]').forEach(b=>b.classList.toggle('active',b.dataset.profileTab===tab));
- if(tab==='about'){root.innerHTML=`<div class="profile-about card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${relationshipDisplay(p)}</div><div class="info-row"><b>Nome de usuário:</b> @${esc(String(p.username||'').replace(/^@/,''))}</div></div>`;bindProfileButtons();return}
- if(tab==='photos'){
-   const s=await db.ref('posts').orderByChild('uid').equalTo(uid).once('value'), photos=[];s.forEach(x=>{const v=x.val()||{};if(v.imageURL)photos.push(v.imageURL)});
-   root.innerHTML=`<div class="card profile-photos-card"><h3>Fotos</h3>${photos.length?`<div class="profile-photo-grid">${photos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto publicada"></a>`).join('')}</div>`:'<p class="muted">Nenhuma foto publicada.</p>'}</div>`;return;
- }
- if(tab==='friends'){
-   if(!(await canViewFriends(uid))){root.innerHTML='<div class="card"><p class="muted">Esse Usuário privou sua lista de amizade</p></div>';return;}
-   const fs=await db.ref('friendships/'+uid).once('value'), ids=[];fs.forEach(x=>ids.push(x.key));
-   const rows=await Promise.all(ids.map(async id=>{const fp=await getProfile(id);return `<button class="suggestion-person profile-friend-person" data-profile-uid="${esc(id)}">${avatar(fp.photoURL,'mini-avatar')}<span><strong>${esc(fp.displayName||'Usuário')}</strong><small>@${esc(fp.username||'')}</small></span></button>`}));
-   root.innerHTML=`<div class="card profile-friends-card"><h3>Amigos · ${ids.length}</h3><div class="profile-friends-grid">${rows.join('')||'<p class="muted">Nenhum amigo.</p>'}</div></div>`;
-   root.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid));return;
- }
- root.innerHTML='<div class="profile-publications card"><div class="profile-section-title"><h3>Publicações</h3></div><div id="profilePosts"><p class="muted">Carregando...</p></div></div>';
- await loadProfilePosts();
-}
+function profileHTML(p,isOwn=false){const username=String(p.username||'').replace(/^@/,'').trim();return `<div class="profile-cover">${p.coverURL?`<img src="${esc(p.coverURL)}">`:''}${isOwn?`<button class="profile-photo-action profile-cover-action" id="profileCoverAction" title="Trocar foto de capa" aria-label="Trocar foto de capa">📷</button>`:''}</div><div class="profile-main"><div class="profile-head"><div class="profile-avatar-wrap"><div class="profile-avatar-large">${p.photoURL?`<img src="${esc(p.photoURL)}">`:'☾'}</div>${isOwn?`<button class="profile-photo-action profile-avatar-action" id="profilePhotoAction" title="Trocar foto de perfil" aria-label="Trocar foto de perfil">📷</button>`:''}</div><div class="profile-name"><h1>${esc(p.displayName||'Usuário')}${roleBadge(p.role)}</h1><p class="profile-username">@${esc(username||'usuário')}</p></div><div class="profile-buttons">${isOwn?`<button class="profile-edit-btn" id="openProfileEdit">✎ Editar perfil</button>`:`<button class="primary" id="profileAddFriend" data-uid="${esc(p.uid)}">Adicionar como amigo</button><button class="secondary" id="profileMessage" data-uid="${esc(p.uid)}">Mensagem</button><button class="secondary profile-report-btn" id="profileReport" data-uid="${esc(p.uid)}">⚑ Denunciar</button><button class="danger profile-block-btn" id="profileBlock" data-uid="${esc(p.uid)}">⛔ Bloquear</button>`}</div></div><div class="profile-nav"><button class="active">Publicações</button><button>Sobre</button><button>Fotos</button><button>Amigos</button></div><div class="profile-about card"><h3>Sobre</h3><div class="info-row"><b>Biografia:</b> ${esc(p.bio||'Ainda não adicionou uma biografia.')}</div><div class="info-row"><b>Mora em:</b> ${esc(p.location||'Não informado')}</div><div class="info-row"><b>Relacionamento:</b> ${relationshipDisplay(p)}</div></div><div class="profile-publications card"><div class="profile-section-title"><h3>Publicações</h3></div><div id="profilePosts"><p class="muted">Carregando...</p></div></div></div>`}
 async function reportProfile(uid){if(!uid||uid===currentUser.uid)return;const reason=prompt('Motivo da denúncia do perfil:');if(!reason)return;const details=prompt('Detalhes (opcional):')||'';await db.ref('reports').push({type:'profile',targetUid:uid,reporterUid:currentUser.uid,reason,details,status:'pending',createdAt:firebase.database.ServerValue.TIMESTAMP});alert('Denúncia do perfil enviada para a equipe do Eclipse.');}
 async function isUserBlocked(uid){if(!uid||uid===currentUser.uid)return false;const s=await db.ref('blocks/'+currentUser.uid+'/'+uid).once('value');return s.val()===true||!!s.val()}
 async function toggleUserBlock(uid,button){if(!uid||uid===currentUser.uid)return;const blocked=await isUserBlocked(uid);if(blocked){if(!confirm('Desbloquear este usuário?'))return;await db.ref('blocks/'+currentUser.uid+'/'+uid).remove();button.textContent='⛔ Bloquear';button.classList.add('danger');return}if(!confirm('Bloquear este usuário? Ele não poderá enviar solicitações ou mensagens para você.'))return;const updates={};updates['blocks/'+currentUser.uid+'/'+uid]=true;updates['friendships/'+currentUser.uid+'/'+uid]=null;updates['friendships/'+uid+'/'+currentUser.uid]=null;updates['friendRequests/'+currentUser.uid+'/'+uid]=null;updates['friendRequests/'+uid+'/'+currentUser.uid]=null;await db.ref().update(updates);button.textContent='✓ Desbloquear';button.classList.remove('danger');const a=$('profileAddFriend'),m=$('profileMessage');if(a){a.disabled=true;a.textContent='Usuário bloqueado'}if(m)m.disabled=true;alert('Usuário bloqueado.');}
-async function getFriendshipState(uid){
- if(!uid||uid===currentUser.uid)return 'self';
- if(await isUserBlocked(uid))return 'blocked';
- const friend=await db.ref('friendships/'+currentUser.uid+'/'+uid).once('value');if(friend.exists())return 'friends';
- const sent=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(sent.exists())return 'sent';
- const incoming=await db.ref('friendRequests/'+currentUser.uid+'/'+uid).once('value');if(incoming.exists())return 'incoming';
- const req=await db.ref('privacySettings/'+uid+'/requests').once('value');if((req.val()||'yes')==='no')return 'disabled';
- return 'add';
-}
-async function updateProfileFriendButton(){
- const a=$('profileAddFriend');if(!a)return;const state=await getFriendshipState(a.dataset.uid);a.disabled=false;a.classList.remove('danger');
- if(state==='friends'){a.textContent='✓ Amigos';a.disabled=true}
- else if(state==='sent'){a.textContent='Solicitação enviada';a.disabled=true}
- else if(state==='incoming'){a.textContent='Aceitar amizade';a.onclick=()=>acceptFriend(a.dataset.uid)}
- else if(state==='disabled'){a.textContent='Solicitações desativadas';a.disabled=true}
- else if(state==='blocked'){a.textContent='Usuário bloqueado';a.disabled=true}
- else {a.textContent='Adicionar como amigo';a.onclick=()=>sendFriendRequest(a.dataset.uid,a)}
-}
-async function bindProfileButtons(){
- document.querySelectorAll('#profilePage [data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid));
- document.querySelectorAll('#profilePage [data-profile-tab]').forEach(b=>b.onclick=()=>loadProfileTab(b.dataset.profileTab));
- const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit'),report=$('profileReport'),block=$('profileBlock');
- if(a)await updateProfileFriendButton();
- if(m)m.onclick=()=>openChat(m.dataset.uid);
- if(edit)edit.onclick=openProfileEditor;
- if(report)report.onclick=()=>reportProfile(report.dataset.uid);
- if(block){const blocked=await isUserBlocked(block.dataset.uid);if(blocked){block.textContent='✓ Desbloquear';block.classList.remove('danger')}block.onclick=()=>toggleUserBlock(block.dataset.uid,block)}
- const pf=$('editProfilePhoto'),cf=$('editProfileCover'),pa=$('profilePhotoAction'),ca=$('profileCoverAction');if(pa&&pf)pa.onclick=()=>pf.click();const rel=$('editProfileRelationship'),relPerson=$('editRelationshipPerson');if(rel&&relPerson){rel.onchange=()=>{relPerson.disabled=!rel.value||rel.value==='Solteiro(a)'||rel.value==='Prefiro não informar';if(relPerson.disabled)relPerson.value=''};relPerson.disabled=!rel.value||rel.value==='Solteiro(a)'||rel.value==='Prefiro não informar'}if(pf)pf.onchange=()=>{const f=pf.files[0];if(f)openCropper(f,'edit-profile',data=>{profilePhotoCropped=data;saveProfileEdit()})};if(ca&&cf)ca.onclick=()=>cf.click();if(cf)cf.onchange=()=>saveProfileEdit();loadProfilePosts();
-}
-async function loadProfilePosts(){const holder=$('profilePosts');if(!holder)return;const uid=activeProfileUid||currentUser.uid;const s=await db.ref('posts').orderByChild('uid').equalTo(uid).once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));const p=await getProfile(uid);holder.innerHTML=a.length?a.slice(0,20).map(v=>`<div class="profile-post"><div class="profile-post-author">${avatar(p?.photoURL,'mini-avatar')}<div><strong>${esc(p?.displayName||'Usuário')}</strong><small>@${esc(p?.username||'')} · ${v.createdAt?new Date(v.createdAt).toLocaleString('pt-BR'):''}</small></div></div><div class="profile-post-text">${esc(v.text||'Publicação com mídia')}</div>${v.imageURL?`<img src="${esc(v.imageURL)}">`:''}${v.videoURL?`<video src="${esc(v.videoURL)}" controls playsinline></video>`:''}</div>`).join(''):'<p class="muted">Nenhuma publicação ainda.</p>'}
+async function bindProfileButtons(){document.querySelectorAll('#profilePage [data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid));const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit'),report=$('profileReport'),block=$('profileBlock');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid);if(edit)edit.onclick=openProfileEditor;if(report)report.onclick=()=>reportProfile(report.dataset.uid);if(block){const blocked=await isUserBlocked(block.dataset.uid);if(blocked){block.textContent='✓ Desbloquear';block.classList.remove('danger')}block.onclick=()=>toggleUserBlock(block.dataset.uid,block)}const pf=$('editProfilePhoto'),cf=$('editProfileCover'),pa=$('profilePhotoAction'),ca=$('profileCoverAction');if(pa&&pf)pa.onclick=()=>pf.click();const rel=$('editProfileRelationship'),relPerson=$('editRelationshipPerson');if(rel&&relPerson){rel.onchange=()=>{relPerson.disabled=!rel.value||rel.value==='Solteiro(a)'||rel.value==='Prefiro não informar';if(relPerson.disabled)relPerson.value=''};relPerson.disabled=!rel.value||rel.value==='Solteiro(a)'||rel.value==='Prefiro não informar'}if(pf)pf.onchange=()=>{const f=pf.files[0];if(f)openCropper(f,'edit-profile',data=>{profilePhotoCropped=data;saveProfileEdit()})};if(ca&&cf)ca.onclick=()=>cf.click();if(cf)cf.onchange=()=>saveProfileEdit();loadProfilePosts()}
+async function loadProfilePosts(){const holder=$('profilePosts');if(!holder)return;const s=await db.ref('posts').orderByChild('uid').equalTo($('profileAddFriend')?.dataset.uid||currentUser.uid).once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));holder.innerHTML=a.length?a.slice(0,10).map(p=>`<div class="profile-post"><div class="profile-post-author">${avatar((p.uid===currentUser.uid?currentProfile:currentProfile)?.photoURL,'mini-avatar')}<div><strong>${esc((p.uid===currentUser.uid?currentProfile?.displayName:'Usuário')||'Usuário')}</strong><small>@${esc((p.uid===currentUser.uid?currentProfile?.username:'')||'')} · ${p.createdAt?new Date(p.createdAt).toLocaleString('pt-BR'):''}</small></div></div><div class="profile-post-text">${esc(p.text||'Publicação com mídia')}</div>${p.imageURL?`<img src="${esc(p.imageURL)}">`:''}${p.videoURL?`<video src="${esc(p.videoURL)}" controls playsinline></video>`:''}</div>`).join(''):'<p class="muted">Nenhuma publicação ainda.</p>'}
 async function openProfileEditor(){const p=currentProfile||{};$('profileEditPanel').classList.add('open');$('editProfileName').value=p.displayName||currentUser.displayName||'';$('editProfileUsername').value=p.username||'';$('editProfileBio').value=p.bio||'';$('editProfileLocation').value=p.location||'';$('editProfileRelationship').value=p.relationship||'';await loadRelationshipFriends(p.relationshipPartnerUid||'')}
 async function saveProfileEdit(){const b=$('saveProfileEdit');if(!b)return;b.disabled=true;b.textContent='Salvando...';try{const uid=currentUser.uid,data={displayName:$('editProfileName').value.trim(),username:$('editProfileUsername').value.trim().replace(/^@/,''),bio:$('editProfileBio').value.trim(),location:$('editProfileLocation').value.trim(),relationship:$('editProfileRelationship').value,relationshipPartnerUid:$('editRelationshipPerson')?.value||'',relationshipPartnerName:$('editRelationshipPerson')?.selectedOptions?.[0]?.textContent||'',updatedAt:firebase.database.ServerValue.TIMESTAMP};const cf=$('editProfileCover')?.files[0];if(profilePhotoCropped){const optimized=await imageFileToDataURL(dataURLToBlob(profilePhotoCropped),{maxWidth:900,maxHeight:900,maxOutput:1400*1024});const r=await uploadToR2(dataURLToBlob(optimized),'profile',uid,'profile.jpg');data.photoURL=r.url;data.photoKey=r.key}else if(currentProfile?.photoKey){data.photoURL=currentProfile.photoURL;data.photoKey=currentProfile.photoKey}if(cf){const optimized=await imageFileToDataURL(cf,{maxWidth:1600,maxHeight:700,maxOutput:1800*1024});const r=await uploadToR2(dataURLToBlob(optimized),'cover',uid,'cover.jpg');data.coverURL=r.url;data.coverKey=r.key}else if(currentProfile?.coverKey){data.coverURL=currentProfile.coverURL;data.coverKey=currentProfile.coverKey}await db.ref('profiles/'+uid).update(data);await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});currentProfile=await getProfile(uid);profilePhotoCropped='';$('editProfilePhoto').value='';$('editProfileCover').value='';$('profileEditPanel').classList.remove('open');renderOwnProfile();const ta=$('topAvatar');if(ta)ta.outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');const ca=$('composerAvatar');if(ca)ca.outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"')}catch(e){console.error('saveProfileEdit',e);msg($('profileEditMsg'),'Não foi possível salvar: '+(e?.message||firebaseMessage(e)))}finally{b.disabled=false;b.textContent='Salvar alterações'}}
-async function sendFriendRequest(uid,button){if(!uid||uid===currentUser.uid)return;try{if(await isUserBlocked(uid)){button.textContent='Usuário bloqueado';button.disabled=true;return}const friend=await db.ref('friendships/'+currentUser.uid+'/'+uid).once('value');if(friend.exists()){button.textContent='✓ Amigos';button.disabled=true;return}const privacy=await db.ref('privacySettings/'+uid+'/requests').once('value');if((privacy.val()||'yes')==='no'){button.textContent='Solicitações desativadas';button.disabled=true;return}const existing=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(existing.exists()){button.textContent='Solicitação enviada';button.disabled=true;return}await db.ref('friendRequests/'+uid+'/'+currentUser.uid).set({uid:currentUser.uid,name:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('notifications/'+uid).push({type:'friend_request',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});button.textContent='Solicitação enviada';button.disabled=true}catch(e){alert(firebaseMessage(e))}}
+async function sendFriendRequest(uid,button){if(!uid||uid===currentUser.uid)return;try{if(await isUserBlocked(uid)){button.textContent='Usuário bloqueado';button.disabled=true;return}const existing=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(existing.exists()){button.textContent='Solicitação enviada';button.disabled=true;return}await db.ref('friendRequests/'+uid+'/'+currentUser.uid).set({uid:currentUser.uid,name:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('notifications/'+uid).push({type:'friend_request',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});button.textContent='Solicitação enviada';button.disabled=true}catch(e){alert(firebaseMessage(e))}}
 async function loadFriends(){const req=await db.ref('friendRequests/'+currentUser.uid).once('value'),r=[];req.forEach(x=>r.push({uid:x.key,...x.val()}));$('friendRequestsList').innerHTML=r.length?'<h3>Solicitações</h3>'+r.map(x=>`<div class="list-item"><div class="list-main">${avatar('','mini-avatar')}<div><strong>${esc(x.name||'Usuário')}</strong><small>Quer ser seu amigo.</small></div></div><button class="primary" data-accept="${x.uid}">Aceitar</button></div>`).join(''):'<p class="muted">Nenhuma solicitação de amizade.</p>';document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>acceptFriend(b.dataset.accept));const fs=await db.ref('friendships/'+currentUser.uid).once('value'),ids=[];fs.forEach(x=>ids.push(x.key));$('friendsList').innerHTML='<h3>Seus amigos</h3>'+(ids.length?'<div class="list">'+(await Promise.all(ids.map(async id=>{const p=await getProfile(id);return `<div class="list-item"><button class="suggestion-person" data-profile-uid="${id}">${avatar(p.photoURL,'mini-avatar')}<strong>${esc(p.displayName||'Usuário')}</strong></button><button class="secondary" data-message="${id}">Mensagem</button></div>`}))).join('')+'</div>':'<p class="muted">Você ainda não tem amigos.</p>');document.querySelectorAll('[data-message]').forEach(b=>b.onclick=()=>openChat(b.dataset.message));document.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 async function acceptFriend(uid){const updates={};updates['friendships/'+currentUser.uid+'/'+uid]=true;updates['friendships/'+uid+'/'+currentUser.uid]=true;updates['friendRequests/'+currentUser.uid+'/'+uid]=null;await db.ref().update(updates);loadFriends()}
 async function loadNotifications(){const s=await db.ref('notifications/'+currentUser.uid).orderByChild('createdAt').limitToLast(30).once('value'),a=[];s.forEach(x=>a.push(x.val()));a.reverse();$('notificationsList').innerHTML=a.length?a.map(x=>`<div class="list-item">${esc(x.fromName||'Alguém')} ${x.type==='friend_request'?'enviou uma solicitação de amizade.':'interagiu com você.'}</div>`).join(''):'<p class="muted">Nenhuma notificação.</p>'}
@@ -787,6 +632,6 @@ async function openChat(uid){if(!uid||uid===currentUser.uid)return;if(await isUs
 function bindChat(){$('openChatBar').onclick=()=>{$('chatFriendsBar').classList.toggle('hidden');loadChatFriends()};$('closeChat').onclick=()=>{$('messageDock').classList.add('hidden');if(activeChatRef)activeChatRef.off();activeChatRef=null};$('chatForm').addEventListener('submit',async e=>{e.preventDefault();const t=$('chatText').value.trim();if(!t||!activeChatUid)return;const key=[currentUser.uid,activeChatUid].sort().join('_');await db.ref('messages/'+key).push({uid:currentUser.uid,text:t,createdAt:firebase.database.ServerValue.TIMESTAMP});$('chatText').value=''})}
 document.addEventListener('change',e=>{if(e.target.id==='postImage'&&$('postMediaName'))$('postMediaName').textContent=e.target.files[0]?.name||'Nenhuma mídia selecionada';if(e.target.id==='storyImage'&&$('storyMediaName'))$('storyMediaName').textContent=e.target.files[0]?.name||'Nenhuma mídia selecionada'});
 document.addEventListener('click',e=>{const report=e.target.closest('[data-report-post]');if(report)reportPost(report.dataset.reportPost,report.dataset.reportTarget);if(e.target.closest('#saveProfileEdit'))saveProfileEdit();if(e.target.closest('#cancelProfileEdit'))$('profileEditPanel').classList.remove('open')});
-document.addEventListener('DOMContentLoaded',()=>{bindCropper();bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindSettings();bindBugReports();bindDiscover();if($('adminRoleForm'))$('adminRoleForm').addEventListener('submit',addAdminRole);const setLoggedInChrome=(loggedIn)=>{document.documentElement.classList.toggle('eclipse-logged-in',!!loggedIn);$('chatLauncher')?.classList.toggle('hidden',!loggedIn);$('messageDock')?.classList.toggle('hidden',!loggedIn);if(!loggedIn&&$('globalSearch')){$('globalSearch').value='';$('globalSearchResults')?.classList.add('hidden')}};const finishAuthBoot=()=>{document.body.classList.remove('auth-checking');document.body.classList.add('auth-ready')};if(initFirebase())auth.onAuthStateChanged(u=>{setLoggedInChrome(!!u);if(u){checkAfterLogin(u).finally(finishAuthBoot)}else{show('home');finishAuthBoot()}});else{setLoggedInChrome(false);if($('loginMsg'))$('loginMsg').textContent='Firebase não foi carregado.';finishAuthBoot()}});
+document.addEventListener('DOMContentLoaded',()=>{bindCropper();bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindSettings();bindBugReports();bindDiscover();if($('adminRoleForm'))$('adminRoleForm').addEventListener('submit',addAdminRole);const setLoggedInChrome=(loggedIn)=>{document.documentElement.classList.toggle('eclipse-logged-in',!!loggedIn);$('chatLauncher')?.classList.toggle('hidden',!loggedIn);$('messageDock')?.classList.toggle('hidden',!loggedIn);if(!loggedIn&&$('globalSearch')){$('globalSearch').value='';$('globalSearchResults')?.classList.add('hidden')}};let authBootFinished=false;const finishAuthBoot=()=>{if(authBootFinished)return;authBootFinished=true;document.body.classList.remove('auth-checking');document.body.classList.add('auth-ready')};const authFallback=setTimeout(()=>{if(!authBootFinished){console.warn('Firebase Auth demorou para responder; exibindo a página inicial.');setLoggedInChrome(false);show('home');finishAuthBoot()}},3000);if(initFirebase()){auth.onAuthStateChanged(u=>{clearTimeout(authFallback);setLoggedInChrome(!!u);if(u){checkAfterLogin(u).finally(finishAuthBoot)}else{show('home');finishAuthBoot()}})}else{clearTimeout(authFallback);setLoggedInChrome(false);if($('loginMsg'))$('loginMsg').textContent='Firebase não foi carregado. Você ainda pode navegar pela página inicial.';show('home');finishAuthBoot()}});
 })();
 

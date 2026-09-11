@@ -55,30 +55,24 @@
 <div id="settingsPage" class="dash-page hidden">
   <div class="settings-shell facebook-settings">
     <div class="settings-header">
-      <div><span class="admin-eyebrow">CONFIGURAÇÕES E PRIVACIDADE</span><h2>Configurações</h2><p class="muted">Organize e controle sua conta do Eclipse em um só lugar.</p></div>
+      <div><span class="admin-eyebrow">CONFIGURAÇÕES E PRIVACIDADE</span><h2>Configurações</h2><p class="muted">Gerencie sua conta, privacidade e segurança.</p></div>
     </div>
     <div class="settings-search card"><span>⌕</span><input id="settingsSearch" type="search" placeholder="Pesquisar nas configurações"></div>
     <div class="settings-layout">
       <aside class="settings-menu card">
         <div class="settings-menu-title">Configurações</div>
-        <div class="settings-menu-group">
-          <div class="settings-menu-category">CONTA</div>
-          <button class="settings-menu-btn active" data-settings-tab="account"><span class="settings-menu-icon">👤</span><span><b>Conta</b><small>Nome, username e e-mail</small></span></button>
-        </div>
-        <div class="settings-menu-group">
-          <div class="settings-menu-category">PRIVACIDADE</div>
-          <button class="settings-menu-btn" data-settings-tab="privacy"><span class="settings-menu-icon">⚿</span><span><b>Privacidade</b><small>Visibilidade, amigos e solicitações</small></span></button>
-        </div>
-        <div class="settings-menu-group">
-          <div class="settings-menu-category">SEGURANÇA</div>
-          <button class="settings-menu-btn" data-settings-tab="security"><span class="settings-menu-icon">⌁</span><span><b>Segurança</b><small>Senha e acesso à conta</small></span></button>
-        </div>
+        <button class="settings-menu-btn active" data-settings-tab="account"><span class="settings-menu-icon">👤</span><span><b>Conta</b><small>Dados pessoais e username</small></span></button>
+        <button class="settings-menu-btn" data-settings-tab="privacy"><span class="settings-menu-icon">⚿</span><span><b>Privacidade</b><small>Quem pode ver e encontrar você</small></span></button>
+        <button class="settings-menu-btn" data-settings-tab="security"><span class="settings-menu-icon">⌁</span><span><b>Segurança</b><small>Senha e acesso à conta</small></span></button>
+        <div class="settings-menu-divider"></div>
+        <div class="settings-menu-label">ATENÇÃO</div>
+        <p class="settings-menu-help">Suas alterações são salvas diretamente na sua conta do Eclipse.</p>
       </aside>
       <div class="settings-content">
         <section id="settingsAccountTab" class="settings-tab">
-          <div class="settings-section-heading"><h3>Conta</h3><p class="muted">Informações básicas do seu perfil.</p></div>
+          <div class="settings-section-heading"><h3>Conta</h3><p class="muted">Controle as informações básicas usadas no seu perfil.</p></div>
           <div class="card settings-card">
-            <div class="settings-row-heading"><div><h3>Informações da conta</h3><p class="muted">Esses dados são usados no seu perfil do Eclipse.</p></div><span class="settings-icon">👤</span></div>
+            <div class="settings-row-heading"><div><h3>Informações pessoais</h3><p class="muted">Nome e username exibidos no Eclipse.</p></div><span class="settings-icon">👤</span></div>
             <form id="accountSettingsForm" class="settings-form">
               <label>Nome<input id="settingsName" type="text" required></label>
               <label>Username<input id="settingsUsername" type="text" placeholder="@seuusername" required></label>
@@ -89,26 +83,31 @@
           </div>
         </section>
         <section id="settingsPrivacyTab" class="settings-tab hidden">
-          <div class="settings-section-heading"><h3>Privacidade</h3><p class="muted">Escolha quem pode encontrar você, ver seus conteúdos e interagir com seu perfil.</p></div>
-          <form id="privacyForm" class="settings-form">
-            <div class="card settings-card settings-option-card"><div><h3>Lista de amigos</h3><p class="muted">Controle quem pode ver seus amigos.</p></div><select id="privacyFriends"><option value="public">Todos</option><option value="friends">Somente amigos</option><option value="private">Ninguém</option></select></div>
-            <div class="card settings-card settings-option-card"><div><h3>Encontrar meu perfil</h3><p class="muted">Permite que seu perfil apareça na pesquisa.</p></div><select id="privacyFind"><option value="public">Todos</option><option value="friends">Somente amigos</option><option value="private">Ninguém</option></select></div>
-            <div class="card settings-card settings-option-card"><div><h3>Solicitações de amizade</h3><p class="muted">Escolha se outras pessoas podem enviar pedidos.</p></div><select id="privacyRequests"><option value="yes">Permitir</option><option value="no">Ninguém</option></select></div>
-            <div class="card settings-card settings-option-card"><div><h3>Quem pode ver minhas publicações</h3><p class="muted">Defina a visibilidade padrão das suas publicações.</p></div><select id="privacyPosts"><option value="public">Todos</option><option value="friends">Somente amigos</option><option value="private">Somente eu</option></select></div>
-            <div class="card settings-card settings-option-card"><div><h3>Marcações</h3><p class="muted">Controle quem pode marcar você.</p></div><select id="privacyTags"><option value="everyone">Todos</option><option value="friends">Somente amigos</option><option value="noone">Ninguém</option></select></div>
-            <div class="card settings-card"><h3>Pessoas bloqueadas</h3><p class="muted">Gerencie quem você bloqueou.</p><button type="button" id="openBlockedUsers" class="secondary">Ver pessoas bloqueadas</button><div id="blockedUsersList" class="blocked-users-list hidden"></div></div>
-            <button class="primary" type="submit">Salvar privacidade</button><div id="privacyMsg" class="message"></div>
-          </form>
+          <div class="settings-section-heading"><h3>Privacidade</h3><p class="muted">Escolha como outras pessoas encontram você e interagem com seu conteúdo.</p></div>
+          <div class="card settings-card privacy-settings-card">
+            <div class="settings-row-heading"><div><h3>Visibilidade e descoberta</h3><p class="muted">Defina quem pode encontrar seu perfil e ver suas informações.</p></div><span class="settings-icon">⌕</span></div>
+            <form id="privacyForm" class="settings-form">
+              <label>Quem pode ver sua lista de amigos<select id="privacyFriends"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
+              <label>Quem pode encontrar você<select id="privacyFind"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
+              <label>Quem pode enviar solicitações de amizade<select id="privacyRequests"><option value="yes">Todos</option><option value="no">Ninguém</option></select></label>
+              <label>Quem pode ver suas publicações<select id="privacyPosts"><option value="public">Todos</option><option value="friends">Amigos</option><option value="private">Somente eu</option></select></label>
+              <label>Quem pode marcar você<select id="privacyTags"><option value="everyone">Todos</option><option value="friends">Amigos</option><option value="noone">Ninguém</option></select></label>
+              <button class="primary" type="submit">Salvar privacidade</button>
+              <div id="privacyMsg" class="message"></div>
+            </form>
+          </div>
+          <div class="card settings-card privacy-info-card"><div class="settings-row-heading"><div><h3>Bloqueio</h3><p class="muted">Pessoas bloqueadas não podem enviar solicitações ou iniciar conversas com você.</p></div><span class="settings-icon">⛔</span></div><button class="secondary" type="button" id="openBlockedUsers">Ver pessoas bloqueadas</button><div id="blockedUsersList" class="blocked-users-list hidden"></div></div>
         </section>
         <section id="settingsSecurityTab" class="settings-tab hidden">
           <div class="settings-section-heading"><h3>Segurança</h3><p class="muted">Proteja o acesso à sua conta.</p></div>
           <div class="card settings-card">
-            <div class="settings-row-heading"><div><h3>Alterar senha</h3><p class="muted">Você precisará confirmar sua senha atual.</p></div><span class="settings-icon">⌁</span></div>
+            <div class="settings-row-heading"><div><h3>Senha</h3><p class="muted">Para alterar sua senha, confirme sua senha atual.</p></div><span class="settings-icon">⌁</span></div>
             <form id="passwordSettingsForm" class="settings-form">
-              <label>Senha atual<input id="currentPassword" type="password" required></label>
-              <label>Nova senha<input id="newPassword" type="password" minlength="6" required></label>
-              <label>Confirmar nova senha<input id="confirmNewPassword" type="password" minlength="6" required></label>
-              <button class="primary" type="submit">Alterar senha</button><div id="passwordSettingsMsg" class="message"></div>
+              <label>Senha atual<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+              <label>Nova senha<input id="newPassword" type="password" minlength="6" autocomplete="new-password" required></label>
+              <label>Confirmar nova senha<input id="confirmNewPassword" type="password" minlength="6" autocomplete="new-password" required></label>
+              <button class="primary" type="submit">Alterar senha</button>
+              <div id="passwordSettingsMsg" class="message"></div>
             </form>
           </div>
         </section>
@@ -116,6 +115,58 @@
     </div>
   </div>
 </div>
+<div id="adminPage" class="dash-page hidden">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <div><span class="admin-eyebrow">CONTROLE DO ECLIPSE</span><h2>Painel administrativo</h2><p class="muted">Central de administração, moderação, denúncias e suporte.</p></div>
+      <span id="myAdminBadge" class="role-badge role-admin">🛡 Administrador</span>
+    </div>
+    <nav class="admin-tabs" aria-label="Seções administrativas">
+      <button class="admin-tab active" data-admin-tab="overview">▦ Visão geral</button>
+      <button class="admin-tab" data-admin-tab="users">👥 Usuários</button>
+      <button class="admin-tab" data-admin-tab="reports">⚑ Denúncias</button>
+      <button class="admin-tab" data-admin-tab="bugs">🐞 Bugs Relatados</button>
+      <button class="admin-tab" data-admin-tab="team">🛡 Equipe</button>
+    </nav>
+
+    <section id="adminOverviewTab" class="admin-tab-panel">
+      <div class="admin-stat-grid">
+        <div class="card admin-stat"><span>👥</span><strong id="adminStatUsers">—</strong><small>Usuários</small></div>
+        <div class="card admin-stat"><span>⚑</span><strong id="adminStatReports">—</strong><small>Denúncias pendentes</small></div>
+        <div class="card admin-stat"><span>🐞</span><strong id="adminStatBugs">—</strong><small>Bugs pendentes</small></div>
+        <div class="card admin-stat"><span>🛡</span><strong id="adminStatTeam">—</strong><small>Equipe administrativa</small></div>
+      </div>
+      <div class="card admin-card admin-overview-card"><h3>Permissões</h3><div class="admin-permission-list">
+        <div><span>🛡</span><div><strong>Administrador</strong><small>Gerencia cargos, usuários, moderação, denúncias e bugs.</small></div></div>
+        <div><span>🛡</span><div><strong>Moderador</strong><small>Suspende, bane, envia advertências, analisa denúncias e bugs.</small></div></div>
+        <div><span>◎</span><div><strong>Usuário</strong><small>Acesso normal à rede social.</small></div></div>
+      </div></div>
+    </section>
+
+    <section id="adminUsersTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">MODERAÇÃO</span><h3>Gerenciar usuários</h3></div><span>🛡</span></div><p class="muted">Suspenda, bana, reative ou envie advertências.</p><div id="adminActionMsg" class="message"></div><div id="adminUsersList" class="admin-users-list"><p class="muted">Carregando usuários...</p></div></div>
+    </section>
+
+    <section id="adminReportsTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">DENÚNCIAS</span><h3>Verificar denúncias</h3></div><span>⚑</span></div><p class="muted">Analise denúncias de perfis e conteúdos.</p><div id="adminReportsList" class="admin-reports-list"><p class="muted">Carregando denúncias...</p></div></div>
+    </section>
+
+    <section id="adminBugsTab" class="admin-tab-panel hidden">
+      <div class="card admin-card"><div class="admin-section-title"><div><span class="admin-eyebrow">SUPORTE</span><h3>Bugs Relatados</h3></div><span>🐞</span></div><p class="muted">Receba, analise e resolva os problemas enviados pelos usuários.</p><div id="adminBugsList" class="admin-bugs-list"><p class="muted">Carregando bugs...</p></div></div>
+    </section>
+
+    <section id="adminTeamTab" class="admin-tab-panel hidden">
+      <div class="admin-grid">
+        <div class="card admin-card"><h3>Dar cargo</h3><p class="muted">Somente administradores podem alterar cargos.</p><form id="adminRoleForm"><label>Username<input id="adminTargetUsername" placeholder="@username" required></label><label>Cargo<select id="adminTargetRole"><option value="1">🛡 Moderador</option><option value="2">🛡 Administrador</option></select></label><button class="primary" type="submit">Salvar cargo</button><div id="adminRoleMsg" class="message"></div></form><div id="adminModeratorNotice" class="message hidden">Somente administradores podem alterar cargos.</div></div>
+        <div class="card admin-card"><h3>Equipe do site</h3><p class="muted">Equipe responsável pela administração e moderação do Eclipse.</p><div id="adminTeamList" class="list"><p class="muted">Carregando...</p></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+</div></section>
+</div>
+<div id="chatLauncher" class="chat-launcher"><button id="openChatBar" class="chat-launcher-btn">💬 <span>Mensagens</span></button><div id="chatFriendsBar" class="chat-friends-bar hidden"></div></div><div id="messageDock" class="message-dock hidden"><div class="message-window"><div class="message-head"><div><span id="chatAvatar" class="mini-avatar">☾</span><div><strong id="chatName">Mensagens</strong><small id="chatStatus">Eclipse</small></div></div><button id="closeChat">×</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-input"><input id="chatText" placeholder="Digite uma mensagem..." autocomplete="off"><button type="submit">➤</button></form></div></div>
 <div id="bugReportModal" class="modal hidden" aria-hidden="true">
   <div class="modal-card bug-report-card">
     <button class="modal-close" id="closeBugReport" type="button">×</button>
