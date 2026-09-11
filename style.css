@@ -807,3 +807,18 @@ body.auth-checking{background:#060713 !important;min-height:100vh;}
 }
 
 .profile-edit-grid .muted{display:block;margin-top:5px;font-size:11px}.inline-profile-link{display:inline;background:none;border:0;padding:0;color:#6d4be8;font-weight:700;cursor:pointer}.profile-post-author{display:flex;align-items:center;gap:9px;margin-bottom:10px}.profile-post-author small{display:block;color:#8a8fa6;font-size:11px;margin-top:2px}.profile-post-text{line-height:1.5;margin-bottom:10px}.profile-post>img,.profile-post>video{display:block;width:100%;max-width:500px;height:500px;object-fit:cover;border-radius:10px;margin:0 auto}.profile-post>video{height:500px;background:#080a18}.profile-post{padding:14px 0;border-bottom:1px solid #edf0f5}.profile-post:last-child{border-bottom:0}
+
+.global-search-results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:#fff;border:1px solid #e3e6ef;border-radius:12px;box-shadow:0 15px 35px #1112;z-index:200;overflow:hidden;padding:5px}
+.search-top{position:relative}
+.global-search-result{width:100%;display:flex;align-items:center;gap:10px;padding:9px;border:0;background:#fff;text-align:left;border-radius:9px;color:#20243a}
+.global-search-result:hover{background:#f2f3f8}
+.global-search-result span{display:flex;flex-direction:column}.global-search-result small{color:#858aa0;margin-top:2px}.global-search-empty{padding:12px;color:#777d91;font-size:13px}
+.story-media-placeholder{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;background:#15183a}.story-text-preview{position:absolute;inset:0;padding:22px 10px;display:grid;place-items:center;text-align:center;font-size:13px;background:linear-gradient(145deg,#15183a,#303e75)}
+.story-card .story-avatar img{width:100%;height:100%;object-fit:cover}
+.story-viewer-card{width:min(520px,94vw);min-height:480px;max-height:90vh;background:#080b1c;color:#fff;border-radius:18px;position:relative;overflow:hidden;box-shadow:0 25px 90px #000b}
+.story-view-head{display:flex;align-items:center;gap:10px;padding:14px 16px}.story-view-head>div{display:flex;flex-direction:column;flex:1}.story-view-head small{color:#aeb4cb;margin-top:2px}.story-time{font-size:11px;color:#8f96b0}.story-view-body{min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050714}.story-view-media{max-width:100%;max-height:65vh;object-fit:contain}.story-view-text{width:100%;padding:18px;text-align:center;white-space:pre-wrap;line-height:1.5;font-size:16px}.story-view-actions{display:flex;gap:8px;padding:12px 14px;background:#0c1025}.story-view-actions button{flex:1}.story-viewer-card .modal-close{z-index:2;color:#fff}
+
+/* Correções da tela pública: a navegação interna e o chat só existem após o login. */
+.landing .desktop-nav{display:none!important;}
+html:not(.eclipse-logged-in) #chatLauncher,
+html:not(.eclipse-logged-in) #messageDock{display:none!important;}

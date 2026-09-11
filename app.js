@@ -254,7 +254,10 @@ function closeBugReport(){const m=$('bugReportModal');if(!m)return;m.classList.a
 
 function bindNavigation(){
  document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();show(b.dataset.screen)}));
- document.querySelectorAll('#mainNav [data-page],#adminNavItem,.top-icon').forEach(b=>b.addEventListener('click',()=>{openPage(b.dataset.page);if(b.dataset.settingsOpen)showSettingsTab(b.dataset.settingsOpen)}));
+ document.querySelectorAll('#mainNav [data-page],#adminNavItem,.top-icon').forEach(b=>b.addEventListener('click',()=>{
+   if(b.dataset.page==='profilePage')activeProfileUid=currentUser?.uid||null;
+   openPage(b.dataset.page);if(b.dataset.settingsOpen)showSettingsTab(b.dataset.settingsOpen)
+ }));
  $('topProfile').onclick=()=>openPage('profilePage'); $('mobileMenu').onclick=()=>{$('sidebar').classList.add('open');$('mobileOverlay').classList.remove('hidden')};$('mobileClose').onclick=closeMobile;$('mobileOverlay').onclick=closeMobile;
 }
 function openPage(id){
@@ -267,7 +270,10 @@ function openPage(id){
   });
   closeMobile();
   if(id==='homePage')loadHome();
-  if(id==='profilePage')renderOwnProfile();
+  if(id==='profilePage'){
+    if(activeProfileUid && activeProfileUid!==currentUser.uid){ /* perfil público já renderizado */ }
+    else renderOwnProfile();
+  }
   if(id==='friendsPage')loadFriends();
   if(id==='groupsPage'){ $('groupsBrowseView')?.classList.remove('hidden'); $('groupDetailView')?.classList.add('hidden'); loadGroups(); }
   if(id==='notificationsPage')loadNotifications();
@@ -299,13 +305,71 @@ async function bindPostInteractions(){document.querySelectorAll('[data-profile-u
 async function toggleLike(id){const ref=db.ref('posts/'+id),snap=await ref.once('value'),p=snap.val()||{},r=p.reactions||{};if(r[currentUser.uid]){delete r[currentUser.uid]}else{r[currentUser.uid]=true}await ref.update({reactions:r,likesCount:Object.keys(r).length});await loadFeed()}
 async function toggleComments(id,forceReload=false){const box=$('comments-'+id);if(!box)return;if(box.classList.contains('loaded')&&!forceReload){box.classList.toggle('open');return}const s=await db.ref('comments/'+id).orderByChild('createdAt').once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));box.innerHTML=`<div class="comments-list">${a.map(c=>`<div class="comment"><div><strong>${esc(c.name||'Usuário')}</strong><span>${esc(c.text)}</span></div>${canManageContent(c.uid)?`<button class="comment-delete" title="Apagar comentário" data-delete-comment="${c.id}" data-delete-comment-post="${id}">Apagar</button>`:''}</div>`).join('')}</div><form class="comment-form" data-comment-form="${id}"><input placeholder="Escreva um comentário..." required><button>Enviar</button></form>`;box.classList.add('loaded','open');box.querySelectorAll('[data-delete-comment]').forEach(b=>b.onclick=()=>deleteComment(b.dataset.deleteCommentPost,b.dataset.deleteComment));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.target.querySelector('input'),text=input.value.trim();if(!text)return;await db.ref('comments/'+id).push({uid:currentUser.uid,name:currentUser.displayName||currentProfile?.displayName||'Usuário',text,createdAt:firebase.database.ServerValue.TIMESTAMP});const p=await db.ref('posts/'+id).once('value');await db.ref('posts/'+id).update({commentsCount:(p.val()?.commentsCount||0)+1});await toggleComments(id,true)};}
 async function sharePost(id){const p=await db.ref('posts/'+id).once('value');if(!p.exists())return;const v=p.val();await db.ref('shares/'+id).push({uid:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('posts/'+id).update({sharesCount:(v.sharesCount||0)+1});alert('Publicação compartilhada.');loadFeed()}
-async function loadStories(){const s=await db.ref('statuses').orderByChild('createdAt').limitToLast(20).once('value');const arr=[];s.forEach(x=>arr.push({id:x.key,...x.val()}));arr.reverse();$('storiesList').innerHTML=arr.length?arr.map(x=>`<div class="story-card" data-story-id="${x.id}">${x.imageURL?`<img src="${esc(x.imageURL)}">`:''}<div class="story-avatar">☾</div><strong>${esc(x.displayName||'Amigo')}</strong></div>`).join(''):`<div class="muted">Seus amigos ainda não publicaram stories.</div>`}
+async function loadStories(){
+  const now=Date.now();
+  const [statusSnap,friendSnap]=await Promise.all([
+    db.ref('statuses').orderByChild('createdAt').limitToLast(80).once('value'),
+    db.ref('friendships/'+currentUser.uid).once('value')
+  ]);
+  const friendIds=new Set(Object.keys(friendSnap.val()||{})); friendIds.add(currentUser.uid);
+  const arr=[];
+  statusSnap.forEach(x=>{
+    const v=x.val()||{}, created=Number(v.createdAt||0), expires=Number(v.expiresAt||0);
+    if((!expires||expires>now) && friendIds.has(v.uid)) arr.push({id:x.key,...v});
+  });
+  arr.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const profiles={}; for(const x of arr) profiles[x.uid]??=await getProfile(x.uid);
+  storyItems=arr.map(x=>({...x,profile:profiles[x.uid]||{}}));
+  const groups=[];
+  const seen=new Set();
+  for(const x of storyItems){
+    if(seen.has(x.uid))continue; seen.add(x.uid);
+    const p=x.profile||{};
+    groups.push(`<button class="story-card" data-story-index="${storyItems.findIndex(y=>y.uid===x.uid)}">
+      ${x.imageURL?`<img src="${esc(x.imageURL)}" alt="">`:x.videoURL?`<div class="story-media-placeholder">▶</div>`:`<div class="story-text-preview">${esc(x.text||'Story')}</div>`}
+      <div class="story-avatar">${p.photoURL?`<img src="${esc(p.photoURL)}" alt="">`:'☾'}</div>
+      <strong>${esc(p.displayName||x.displayName||'Amigo')}</strong>
+    </button>`);
+  }
+  $('storiesList').innerHTML=groups.join('')||'<div class="muted">Seus amigos ainda não publicaram stories.</div>';
+  $('storiesList').querySelectorAll('[data-story-index]').forEach(b=>b.onclick=()=>openStoryViewer(Number(b.dataset.storyIndex)));
+}
+async function openStoryViewer(index){
+  if(!storyItems.length)return;
+  activeStoryIndex=Math.max(0,Math.min(index,storyItems.length-1));
+  const m=$('storyViewerModal'); if(!m)return;
+  m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); renderStoryViewer();
+}
+function closeStoryViewer(){const m=$('storyViewerModal');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true')}}
+function renderStoryViewer(){
+  const x=storyItems[activeStoryIndex]; if(!x)return;
+  const p=x.profile||{};
+  const media=x.videoURL?`<video class="story-view-media" src="${esc(x.videoURL)}" controls autoplay playsinline></video>`:x.imageURL?`<img class="story-view-media" src="${esc(x.imageURL)}" alt="Story">`:'';
+  const own=x.uid===currentUser.uid;
+  $('storyViewerContent').innerHTML=`<div class="story-view-head">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></div><span class="story-time">${formatRelativeTime(x.createdAt)}</span></div><div class="story-view-body">${media}${x.text?`<div class="story-view-text">${esc(x.text)}</div>`:''}</div><div class="story-view-actions"><button class="secondary" id="storyPrev">‹ Anterior</button><button class="secondary" id="storyNext">Próximo ›</button>${own?`<button class="danger" id="storyDelete">Excluir</button>`:''}</div>`;
+  $('storyPrev').onclick=()=>{if(activeStoryIndex>0){activeStoryIndex--;renderStoryViewer()}};
+  $('storyNext').onclick=()=>{if(activeStoryIndex<storyItems.length-1){activeStoryIndex++;renderStoryViewer()}};
+  $('storyDelete')?.addEventListener('click',deleteActiveStory);
+}
+async function deleteActiveStory(){
+  const x=storyItems[activeStoryIndex]; if(!x||x.uid!==currentUser.uid)return;
+  if(!confirm('Excluir este story?'))return;
+  try{if(x.mediaKey)await deleteFromR2(x.mediaKey);await db.ref('statuses/'+x.id).remove();storyItems.splice(activeStoryIndex,1);if(!storyItems.length){closeStoryViewer();await loadStories();return}activeStoryIndex=Math.min(activeStoryIndex,storyItems.length-1);renderStoryViewer();await loadStories()}catch(e){alert('Não foi possível excluir o story: '+firebaseMessage(e))}
+}
 async function loadSuggestions(){const s=await db.ref('profiles').limitToFirst(20).once('value');const arr=[];s.forEach(x=>{if(x.key!==currentUser.uid)arr.push({uid:x.key,...x.val()})});$('suggestionsList').innerHTML=arr.slice(0,5).map(x=>`<div class="suggestion"><button class="suggestion-person" data-profile-uid="${x.uid}">${avatar(x.photoURL,'mini-avatar')}<span><strong>${esc(x.displayName||'Usuário')}</strong><small>@${esc(x.username||'')}</small></span></button><button class="add-friend" data-add-friend="${x.uid}">Adicionar</button></div>`).join('')||'<p class="muted">Nenhuma sugestão encontrada.</p>';document.querySelectorAll('[data-add-friend]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.addFriend,b));document.querySelectorAll('.suggestion-person').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
-function bindFeed(){$('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
+function bindFeed(){$('closeStoryViewer')?.addEventListener('click',closeStoryViewer);$('storyViewerModal')?.addEventListener('click',e=>{if(e.target.id==='storyViewerModal')closeStoryViewer()});$('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
 function openModal(id){$(id)?.classList.remove('hidden')}
 async function publishPost(){const text=$('postText').value.trim(),file=$('postImage').files[0];if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,likesCount:0,commentsCount:0,sharesCount:0,reactions:{}};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1400,maxHeight:1400,maxOutput:1800*1024});r=await uploadToR2(dataURLToBlob(optimized),'posts',currentUser.uid,file.name||'foto.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'videos',currentUser.uid,file.name||'video.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('posts').push(data);$('postText').value='';$('postImage').value='';if($('postMediaName'))$('postMediaName').textContent='Nenhuma mídia selecionada';$('postModal').classList.add('hidden');await loadHome()}catch(e){msg($('postMsg'),'Não foi possível publicar: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar'}}
-async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishStoryBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1600*1024});r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('statuses').push(data);$('storyText').value='';$('storyImage').value='';if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';$('storyModal').classList.add('hidden');await loadHome()}catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar story'}}async function renderOwnProfile(){const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
-async function viewProfile(uid){const p=await getProfile(uid);$('publicProfile').innerHTML=profileHTML(p,uid===currentUser.uid);bindProfileButtons();openPage('profilePage')}
+async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishStoryBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,expiresAt:Date.now()+24*60*60*1000};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1600*1024});r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('statuses').push(data);$('storyText').value='';$('storyImage').value='';if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';$('storyModal').classList.add('hidden');await loadHome()}catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar story'}}async function renderOwnProfile(){activeProfileUid=currentUser.uid;const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
+async function viewProfile(uid){
+  if(!uid)return;
+  activeProfileUid=uid;
+  const p=await getProfile(uid);
+  if(!p){alert('Perfil não encontrado.');return}
+  $('publicProfile').innerHTML=profileHTML(p,uid===currentUser.uid);
+  bindProfileButtons();
+  openPage('profilePage');
+}
 async function loadRelationshipFriends(selectedUid=''){
   const select=$('editRelationshipPerson'); if(!select||!currentUser)return;
   select.innerHTML='<option value="">Nenhuma pessoa marcada</option>';
@@ -535,12 +599,29 @@ function bindSettings(){
   bindSettingsTabs();
 }
 async function discover(){const q=$('discoverInput').value.trim().toLowerCase(),s=await db.ref('profiles').once('value'),a=[];s.forEach(x=>{const p=x.val()||{};if(x.key!==currentUser.uid&&(!q||(p.displayName||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q)))a.push({uid:x.key,...p})});$('discoverResults').innerHTML=a.map(p=>`<div class="list-item"><button class="suggestion-person" data-profile-uid="${p.uid}">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></div></button><div><button class="primary" data-view-profile="${p.uid}">Ver perfil</button><button class="secondary" data-discover-add="${p.uid}">Adicionar</button></div></div>`).join('')||'<p class="muted">Nenhum perfil encontrado.</p>';document.querySelectorAll('[data-view-profile]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.viewProfile));document.querySelectorAll('[data-discover-add]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.discoverAdd,b));document.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
-function bindDiscover(){$('discoverBtn').onclick=discover;$('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){openPage('discoverPage');$('discoverInput').value=e.target.value;discover()}})}
+let globalSearchTimer=null;
+async function globalUserSearch(q){
+  const box=$('globalSearchResults'); if(!box)return;
+  q=q.trim().toLowerCase(); if(!q){box.classList.add('hidden');box.innerHTML='';return}
+  const snap=await db.ref('profiles').once('value'),results=[];
+  snap.forEach(x=>{const p=x.val()||{},name=(p.displayName||'').toLowerCase(),user=(p.username||'').toLowerCase();if(x.key!==currentUser.uid&&(name.includes(q)||user.includes(q)))results.push({uid:x.key,...p})});
+  results.sort((a,b)=>((a.username||'').toLowerCase().startsWith(q)?0:1)-((b.username||'').toLowerCase().startsWith(q)?0:1));
+  box.innerHTML=results.slice(0,8).map(p=>`<button class="global-search-result" data-global-profile="${p.uid}">${avatar(p.photoURL,'mini-avatar')}<span><strong>${esc(p.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></span></button>`).join('')||'<div class="global-search-empty">Nenhum perfil encontrado.</div>';
+  box.classList.remove('hidden');
+  box.querySelectorAll('[data-global-profile]').forEach(b=>b.onclick=()=>{box.classList.add('hidden');$('globalSearch').value='';viewProfile(b.dataset.globalProfile)});
+}
+function bindDiscover(){
+  $('discoverBtn').onclick=discover;
+  const input=$('globalSearch');
+  input.addEventListener('input',()=>{clearTimeout(globalSearchTimer);globalSearchTimer=setTimeout(()=>globalUserSearch(input.value),120)});
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){openPage('discoverPage');$('discoverInput').value=input.value;discover();$('globalSearchResults')?.classList.add('hidden')}});
+  document.addEventListener('click',e=>{if(!e.target.closest('.search-top'))$('globalSearchResults')?.classList.add('hidden')});
+}
 async function loadChatFriends(){const bar=$('chatFriendsBar');if(!bar)return;const fs=await db.ref('friendships/'+currentUser.uid).once('value'),ids=[];fs.forEach(x=>ids.push(x.key));const profiles=await Promise.all(ids.slice(0,8).map(getProfile));bar.innerHTML=profiles.map(p=>`<button class="chat-friend" data-chat-user="${p.uid}">${avatar(p.photoURL,'mini-avatar')}<span>${esc(p.displayName||'Usuário')}</span></button>`).join('')||'<span class="muted">Adicione amigos para conversar.</span>';bar.querySelectorAll('[data-chat-user]').forEach(b=>b.onclick=()=>openChat(b.dataset.chatUser))}
 async function openChat(uid){if(!uid||uid===currentUser.uid)return;if(await isUserBlocked(uid)){alert('Você bloqueou este usuário ou ele está bloqueado para você.');return}activeChatUid=uid;const p=await getProfile(uid);$('chatName').textContent=p.displayName||'Usuário';$('chatStatus').textContent='@'+(p.username||'');const old=$('chatAvatar');if(old)old.outerHTML=avatar(p.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="chatAvatar" class="mini-avatar"');$('messageDock').classList.remove('hidden');const key=[currentUser.uid,uid].sort().join('_');if(activeChatRef)activeChatRef.off();activeChatRef=db.ref('messages/'+key);activeChatRef.on('value',s=>{const a=[];s.forEach(x=>a.push(x.val()));a.sort((x,y)=>(x.createdAt||0)-(y.createdAt||0));$('chatMessages').innerHTML=a.map(x=>`<div class="bubble ${x.uid===currentUser.uid?'mine':''}">${esc(x.text)}</div>`).join('');$('chatMessages').scrollTop=$('chatMessages').scrollHeight})}
 function bindChat(){$('openChatBar').onclick=()=>{$('chatFriendsBar').classList.toggle('hidden');loadChatFriends()};$('closeChat').onclick=()=>{$('messageDock').classList.add('hidden');if(activeChatRef)activeChatRef.off();activeChatRef=null};$('chatForm').addEventListener('submit',async e=>{e.preventDefault();const t=$('chatText').value.trim();if(!t||!activeChatUid)return;const key=[currentUser.uid,activeChatUid].sort().join('_');await db.ref('messages/'+key).push({uid:currentUser.uid,text:t,createdAt:firebase.database.ServerValue.TIMESTAMP});$('chatText').value=''})}
 document.addEventListener('change',e=>{if(e.target.id==='postImage'&&$('postMediaName'))$('postMediaName').textContent=e.target.files[0]?.name||'Nenhuma mídia selecionada';if(e.target.id==='storyImage'&&$('storyMediaName'))$('storyMediaName').textContent=e.target.files[0]?.name||'Nenhuma mídia selecionada'});
 document.addEventListener('click',e=>{const report=e.target.closest('[data-report-post]');if(report)reportPost(report.dataset.reportPost,report.dataset.reportTarget);if(e.target.closest('#saveProfileEdit'))saveProfileEdit();if(e.target.closest('#cancelProfileEdit'))$('profileEditPanel').classList.remove('open')});
-document.addEventListener('DOMContentLoaded',()=>{bindCropper();bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindSettings();bindBugReports();bindDiscover();if($('adminRoleForm'))$('adminRoleForm').addEventListener('submit',addAdminRole);const finishAuthBoot=()=>{document.body.classList.remove('auth-checking');document.body.classList.add('auth-ready')};if(initFirebase())auth.onAuthStateChanged(u=>{if(u){checkAfterLogin(u).finally(finishAuthBoot)}else{show('home');finishAuthBoot()}});else{if($('loginMsg'))$('loginMsg').textContent='Firebase não foi carregado.';finishAuthBoot()}});
+document.addEventListener('DOMContentLoaded',()=>{bindCropper();bindNavigation();bindAuth();bindSetup();bindFeed();bindChat();bindGroups();bindSettings();bindBugReports();bindDiscover();if($('adminRoleForm'))$('adminRoleForm').addEventListener('submit',addAdminRole);const setLoggedInChrome=(loggedIn)=>{document.documentElement.classList.toggle('eclipse-logged-in',!!loggedIn);$('chatLauncher')?.classList.toggle('hidden',!loggedIn);$('messageDock')?.classList.toggle('hidden',!loggedIn);if(!loggedIn&&$('globalSearch')){$('globalSearch').value='';$('globalSearchResults')?.classList.add('hidden')}};const finishAuthBoot=()=>{document.body.classList.remove('auth-checking');document.body.classList.add('auth-ready')};if(initFirebase())auth.onAuthStateChanged(u=>{setLoggedInChrome(!!u);if(u){checkAfterLogin(u).finally(finishAuthBoot)}else{show('home');finishAuthBoot()}});else{setLoggedInChrome(false);if($('loginMsg'))$('loginMsg').textContent='Firebase não foi carregado.';finishAuthBoot()}});
 })();
 
