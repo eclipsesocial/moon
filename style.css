@@ -806,16 +806,4 @@ body.auth-checking{background:#060713 !important;min-height:100vh;}
   .settings-menu-btn{min-width:190px;flex:0 0 auto}
 }
 
-/* === Publicações no perfil + mídia padronizada === */
-.profile-post{padding:16px;margin:0 0 12px;border:1px solid var(--eclipse-border,#292d50);border-radius:12px;background:var(--eclipse-card-2,#12142d);overflow:hidden;box-sizing:border-box}
-.profile-post-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.profile-post-head strong{display:block;font-size:14px;color:var(--eclipse-text,#eef0ff)}
-.profile-post-head small{display:block;margin-top:3px;font-size:11px;color:var(--eclipse-muted,#9da1bd)}
-.profile-post-text{margin:0 0 12px;white-space:pre-wrap;line-height:1.55;color:var(--eclipse-text,#eef0ff)}
-.profile-post-image,.post-image,.group-post-media{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;border-radius:10px;margin:10px auto 0;background:#050713}
-.profile-post-video{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;border-radius:10px;margin:10px auto 0;background:#050713}
-.post-video{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;margin:8px auto 0;border-radius:10px;background:#050713}
-.story-card img{width:100%!important;height:100%!important;object-fit:cover}
-@media(max-width:540px){
-  .profile-post-image,.post-image,.group-post-media,.profile-post-video,.post-video{width:100%!important;height:auto!important;aspect-ratio:1/1;max-height:none!important}
-}
+.profile-edit-grid .muted{display:block;margin-top:5px;font-size:11px}.inline-profile-link{display:inline;background:none;border:0;padding:0;color:#6d4be8;font-weight:700;cursor:pointer}.profile-post-author{display:flex;align-items:center;gap:9px;margin-bottom:10px}.profile-post-author small{display:block;color:#8a8fa6;font-size:11px;margin-top:2px}.profile-post-text{line-height:1.5;margin-bottom:10px}.profile-post>img,.profile-post>video{display:block;width:100%;max-width:500px;height:500px;object-fit:cover;border-radius:10px;margin:0 auto}.profile-post>video{height:500px;background:#080a18}.profile-post{padding:14px 0;border-bottom:1px solid #edf0f5}.profile-post:last-child{border-bottom:0}
