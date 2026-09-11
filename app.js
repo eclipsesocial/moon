@@ -18,20 +18,42 @@ async function uploadToR2(fileOrBlob,folder,uid,fileName='arquivo'){
   const file=fileOrBlob instanceof File ? fileOrBlob : new File([fileOrBlob],fileName,{type:fileOrBlob.type||'application/octet-stream'});
   const max=100*1024*1024;
   if(file.size>max)throw new Error('O arquivo deve ter no máximo 100 MB.');
+  if(!folder||!uid)throw new Error('Não foi possível identificar o destino do arquivo.');
+
   const form=new FormData();
   form.append('file',file,file.name||fileName);
   form.append('folder',folder);
   form.append('uid',uid);
+
   let res;
   try{
-    res=await fetch(R2_WORKER_URL+'/upload',{method:'POST',body:form});
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),120000);
+    try{
+      res=await fetch(R2_WORKER_URL+'/upload',{method:'POST',body:form,signal:controller.signal});
+    }finally{clearTimeout(timer)}
   }catch(e){
-    throw new Error('Não foi possível conectar ao armazenamento R2.');
+    if(e?.name==='AbortError')throw new Error('O upload demorou demais. Verifique a conexão e tente novamente.');
+    throw new Error('Não foi possível conectar ao armazenamento R2. Verifique se o Worker está online e configurado com o bucket R2.');
   }
+
+  const raw=await res.text();
   let body={};
-  try{body=await res.json()}catch{}
-  if(!res.ok||!body.ok)throw new Error(body.error||'Falha no upload para o R2.');
-  return {key:body.key,url:R2_WORKER_URL+'/file?key='+encodeURIComponent(body.key),type:body.contentType||file.type,size:body.size||file.size};
+  try{body=raw?JSON.parse(raw):{}}catch{body={error:raw||''}}
+
+  if(!res.ok||!body.ok){
+    const detail=body.error||body.message||`Servidor R2 respondeu HTTP ${res.status}.`;
+    throw new Error(`R2: ${detail}`);
+  }
+
+  if(!body.key)throw new Error('R2: o servidor não retornou a chave do arquivo.');
+
+  return {
+    key:body.key,
+    url:R2_WORKER_URL+'/file?key='+encodeURIComponent(body.key),
+    type:body.contentType||file.type,
+    size:body.size||file.size
+  };
 }
 
 async function deleteFromR2(key){
@@ -214,7 +236,7 @@ function profileHTML(p,isOwn=false){const username=String(p.username||'').replac
 function bindProfileButtons(){const a=$('profileAddFriend'),m=$('profileMessage'),edit=$('openProfileEdit');if(a)a.onclick=()=>sendFriendRequest(a.dataset.uid,a);if(m)m.onclick=()=>openChat(m.dataset.uid);if(edit)edit.onclick=openProfileEditor;const pf=$('editProfilePhoto'),cf=$('editProfileCover'),pa=$('profilePhotoAction'),ca=$('profileCoverAction');if(pa&&pf)pa.onclick=()=>pf.click();if(pf)pf.onchange=()=>{const f=pf.files[0];if(f)openCropper(f,'edit-profile',data=>{profilePhotoCropped=data;saveProfileEdit()})};if(ca&&cf)ca.onclick=()=>cf.click();if(cf)cf.onchange=()=>saveProfileEdit();loadProfilePosts()}
 async function loadProfilePosts(){const holder=$('profilePosts');if(!holder)return;const s=await db.ref('posts').orderByChild('uid').equalTo($('profileAddFriend')?.dataset.uid||currentUser.uid).once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));holder.innerHTML=a.length?a.slice(0,10).map(p=>`<div class="profile-post"><strong>${esc(p.text||'Publicação com mídia')}</strong>${p.imageURL?`<img src="${esc(p.imageURL)}">`:''}${p.videoURL?`<video src="${esc(p.videoURL)}" controls playsinline></video>`:''}</div>`).join(''):'<p class="muted">Nenhuma publicação ainda.</p>'}
 function openProfileEditor(){const p=currentProfile||{};$('profileEditPanel').classList.add('open');$('editProfileName').value=p.displayName||currentUser.displayName||'';$('editProfileUsername').value=p.username||'';$('editProfileBio').value=p.bio||'';$('editProfileLocation').value=p.location||'';$('editProfileRelationship').value=p.relationship||''}
-async function saveProfileEdit(){const b=$('saveProfileEdit');if(!b)return;b.disabled=true;try{const uid=currentUser.uid,data={displayName:$('editProfileName').value.trim(),username:$('editProfileUsername').value.trim().replace(/^@/,''),bio:$('editProfileBio').value.trim(),location:$('editProfileLocation').value.trim(),relationship:$('editProfileRelationship').value,updatedAt:firebase.database.ServerValue.TIMESTAMP};const cf=$('editProfileCover')?.files[0];if(profilePhotoCropped)data.photoURL=profilePhotoCropped;if(cf)data.coverURL=await imageFileToDataURL(cf,{maxWidth:1600,maxHeight:700,maxOutput:1600*1024});await db.ref('profiles/'+uid).update(data);await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});currentProfile=await getProfile(uid);profilePhotoCropped='';$('editProfilePhoto').value='';$('editProfileCover').value='';$('profileEditPanel').classList.remove('open');renderOwnProfile();const ta=$('topAvatar');if(ta)ta.outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');const ca=$('composerAvatar');if(ca)ca.outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"')}catch(e){console.error('saveProfileEdit',e);msg($('profileEditMsg'),'Não foi possível salvar: '+firebaseMessage(e))}finally{b.disabled=false}}
+async function saveProfileEdit(){const b=$('saveProfileEdit');if(!b)return;b.disabled=true;b.textContent='Salvando...';try{const uid=currentUser.uid,data={displayName:$('editProfileName').value.trim(),username:$('editProfileUsername').value.trim().replace(/^@/,''),bio:$('editProfileBio').value.trim(),location:$('editProfileLocation').value.trim(),relationship:$('editProfileRelationship').value,updatedAt:firebase.database.ServerValue.TIMESTAMP};const cf=$('editProfileCover')?.files[0];if(profilePhotoCropped){const optimized=await imageFileToDataURL(dataURLToBlob(profilePhotoCropped),{maxWidth:900,maxHeight:900,maxOutput:1400*1024});const r=await uploadToR2(dataURLToBlob(optimized),'profile',uid,'profile.jpg');data.photoURL=r.url;data.photoKey=r.key}else if(currentProfile?.photoKey){data.photoURL=currentProfile.photoURL;data.photoKey=currentProfile.photoKey}if(cf){const optimized=await imageFileToDataURL(cf,{maxWidth:1600,maxHeight:700,maxOutput:1800*1024});const r=await uploadToR2(dataURLToBlob(optimized),'cover',uid,'cover.jpg');data.coverURL=r.url;data.coverKey=r.key}else if(currentProfile?.coverKey){data.coverURL=currentProfile.coverURL;data.coverKey=currentProfile.coverKey}await db.ref('profiles/'+uid).update(data);await currentUser.updateProfile({displayName:data.displayName||currentUser.displayName});currentProfile=await getProfile(uid);profilePhotoCropped='';$('editProfilePhoto').value='';$('editProfileCover').value='';$('profileEditPanel').classList.remove('open');renderOwnProfile();const ta=$('topAvatar');if(ta)ta.outerHTML=avatar(currentProfile.photoURL,'mini-avatar').replace('span class="mini-avatar"','span id="topAvatar" class="mini-avatar"');const ca=$('composerAvatar');if(ca)ca.outerHTML=avatar(currentProfile.photoURL,'avatar').replace('span class="avatar"','span id="composerAvatar" class="avatar"')}catch(e){console.error('saveProfileEdit',e);msg($('profileEditMsg'),'Não foi possível salvar: '+(e?.message||firebaseMessage(e)))}finally{b.disabled=false;b.textContent='Salvar alterações'}}
 async function sendFriendRequest(uid,button){if(!uid||uid===currentUser.uid)return;try{const existing=await db.ref('friendRequests/'+uid+'/'+currentUser.uid).once('value');if(existing.exists()){button.textContent='Solicitação enviada';button.disabled=true;return}await db.ref('friendRequests/'+uid+'/'+currentUser.uid).set({uid:currentUser.uid,name:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('notifications/'+uid).push({type:'friend_request',fromUid:currentUser.uid,fromName:currentUser.displayName||'',createdAt:firebase.database.ServerValue.TIMESTAMP,read:false});button.textContent='Solicitação enviada';button.disabled=true}catch(e){alert(firebaseMessage(e))}}
 async function loadFriends(){const req=await db.ref('friendRequests/'+currentUser.uid).once('value'),r=[];req.forEach(x=>r.push({uid:x.key,...x.val()}));$('friendRequestsList').innerHTML=r.length?'<h3>Solicitações</h3>'+r.map(x=>`<div class="list-item"><div class="list-main">${avatar('','mini-avatar')}<div><strong>${esc(x.name||'Usuário')}</strong><small>Quer ser seu amigo.</small></div></div><button class="primary" data-accept="${x.uid}">Aceitar</button></div>`).join(''):'<p class="muted">Nenhuma solicitação de amizade.</p>';document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>acceptFriend(b.dataset.accept));const fs=await db.ref('friendships/'+currentUser.uid).once('value'),ids=[];fs.forEach(x=>ids.push(x.key));$('friendsList').innerHTML='<h3>Seus amigos</h3>'+(ids.length?'<div class="list">'+(await Promise.all(ids.map(async id=>{const p=await getProfile(id);return `<div class="list-item"><button class="suggestion-person" data-profile-uid="${id}">${avatar(p.photoURL,'mini-avatar')}<strong>${esc(p.displayName||'Usuário')}</strong></button><button class="secondary" data-message="${id}">Mensagem</button></div>`}))).join('')+'</div>':'<p class="muted">Você ainda não tem amigos.</p>');document.querySelectorAll('[data-message]').forEach(b=>b.onclick=()=>openChat(b.dataset.message));document.querySelectorAll('[data-profile-uid]').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 async function acceptFriend(uid){const updates={};updates['friendships/'+currentUser.uid+'/'+uid]=true;updates['friendships/'+uid+'/'+currentUser.uid]=true;updates['friendRequests/'+currentUser.uid+'/'+uid]=null;await db.ref().update(updates);loadFriends()}

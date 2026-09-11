@@ -607,3 +607,76 @@ body.auth-ready .dashboard{
   opacity:1;
 }
 body.auth-checking{background:#060713 !important;min-height:100vh;}
+
+/* === CORREÇÃO DEFINITIVA — SIDEBAR DESKTOP === */
+@media (min-width: 851px){
+  .dashboard > #sidebar,
+  .dashboard aside#sidebar{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    box-sizing:border-box !important;
+    width:250px !important;
+    min-width:250px !important;
+    height:100vh !important;
+    padding:22px 15px !important;
+    position:fixed !important;
+    inset:0 auto 0 0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    z-index:200 !important;
+  }
+
+  .dashboard > #sidebar .side-brand{
+    width:100% !important;
+    min-height:42px !important;
+    margin:2px 0 28px !important;
+    box-sizing:border-box !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    flex:0 0 auto !important;
+  }
+
+  .dashboard > #sidebar #mainNav{
+    width:100% !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:6px !important;
+    flex:0 0 auto !important;
+  }
+
+  .dashboard > #sidebar #mainNav button,
+  .dashboard > #sidebar > .admin-nav-item,
+  .dashboard > #sidebar > .logout{
+    width:100% !important;
+    box-sizing:border-box !important;
+    flex:0 0 auto !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    text-align:left !important;
+    margin-left:0 !important;
+    margin-right:0 !important;
+  }
+
+  .dashboard > #sidebar > .admin-nav-item{
+    margin-top:auto !important;
+  }
+
+  .dashboard > #sidebar > .logout{
+    margin-top:6px !important;
+    margin-bottom:2px !important;
+  }
+
+  .dashboard > .dash-main,
+  .dashboard .dash-main{
+    margin-left:250px !important;
+    width:calc(100% - 250px) !important;
+    min-width:0 !important;
+  }
+
+  .dashboard .mobile-menu{display:none !important;}
+}
