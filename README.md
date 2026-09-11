@@ -1,36 +1,28 @@
-# Eclipse Alpha 0.0.0 — versão estática
+# Projeto Eclipse Alpha 0.0.0
 
-Sem Vite, React ou npm.
+Versão com:
+- Firebase EclipseSocial / Realtime Database
+- Menu lateral visível no PC e navegação responsiva no celular
+- Exclusão de publicações pelo autor, administrador ou moderador
+- Exclusão de comentários pelo autor do comentário, administrador ou moderador
+- Contador de comentários atualizado ao apagar
+- Exclusão de comentários e compartilhamentos associados ao apagar uma publicação
 
-Arquivos para GitHub Pages:
-- index.html
-- app.js
-- style.css
-- eclipse.svg
 
-## Firebase
-- Authentication: E-mail/Password.
-- Realtime Database: usado para os dados do projeto.
-- Firebase Storage: **não é necessário para esta versão**.
+## Sistema de cargos
+A estrutura de usuários usa um campo numérico `role` como fonte principal:
+- `0` — Default/Usuário
+- `1` — Moderador
+- `2` — Administrador
 
-## Fotos armazenadas no Realtime Database
-Esta versão foi adaptada para não depender do Firebase Storage. As imagens são processadas no navegador (redimensionadas e comprimidas) e salvas como **Data URL (base64)** diretamente no Realtime Database.
+Novos cadastros recebem automaticamente `role: 0`. O Painel administrativo aparece no menu lateral para cargos 1 e 2. Somente o cargo 2 pode promover/rebaixar usuários. A estrutura antiga `admin/{uid}` é mantida apenas para compatibilidade com dados anteriores.
 
-As fotos de:
-- perfil → `profiles/{UID}/photoURL`
-- capa → `profiles/{UID}/coverURL`
-- publicações → `posts/{POST_ID}/imageURL`
-- stories → `statuses/{STATUS_ID}/imageURL`
+## Cloudflare R2
 
-não são enviadas para o Firebase Storage.
+A versão atual usa o Worker R2 abaixo para mídia:
 
-Para evitar registros grandes demais, o navegador reduz as imagens antes de gravá-las no banco. A imagem original pode ter até 10 MB; depois do processamento, o tamanho é limitado por tipo de uso.
+`https://dry-limit-e851.eclipsesocialoficial.workers.dev`
 
-> Observação: armazenar imagens em base64 no Realtime Database aumenta bastante o tamanho do banco. Esta solução é adequada para o Alpha/testes, mas para uma rede social grande o ideal futuramente será usar armazenamento de arquivos separado.
+O frontend envia arquivos para `POST /upload` e grava no Realtime Database somente a URL/chave do objeto. Fotos de perfil/capa, fotos e vídeos de publicações, stories e mídia de grupos passam pelo R2.
 
-### Painel administrativo
-O primeiro administrador precisa ser cadastrado manualmente no Realtime Database, pois nenhum usuário deve conseguir elevar o próprio cargo pelo navegador.
-Crie `admin/{UID_DO_PRIMEIRO_ADMIN}` com:
-`{ "uid": "UID_DO_USUARIO", "role": "admin", "createdAt": <timestamp> }`
-Depois disso, esse administrador pode adicionar administradores e moderadores pelo Painel administrativo usando o username.
-Os cargos também são copiados para `profiles/{uid}.adminRole` para exibição do brasão.
+O Worker precisa ter um R2 Bucket Binding chamado `R2`. As credenciais do R2 nunca devem ser colocadas no frontend.

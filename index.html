@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0d22"><link rel="icon" href="eclipse.svg"><title>Eclipse — Alpha 0.0.0</title><link rel="stylesheet" href="style.css?v=5"></head><body>
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0d22"><link rel="icon" href="eclipse.svg"><title>Eclipse — Alpha 0.0.0</title><link rel="stylesheet" href="style.css?v=5"></head><body class="auth-checking">
 <div id="app">
 <main class="landing">
 <nav class="desktop-nav" aria-label="Navegação principal">
@@ -68,25 +68,26 @@
     <div class="admin-grid">
       <div class="card admin-card">
         <h3>Adicionar cargo</h3>
-        <p class="muted">Informe o username da pessoa e escolha o cargo.</p>
+        <p class="muted">O cargo 0 é o padrão para novos usuários. Administradores podem promover para cargo 1 ou 2.</p>
         <form id="adminRoleForm">
           <label>Username
             <input id="adminTargetUsername" placeholder="@username" required>
           </label>
           <label>Cargo
             <select id="adminTargetRole">
-              <option value="moderator">🛡 Moderador</option>
-              <option value="admin">🛡 Administrador</option>
+              <option value="1">🛡 Moderador — cargo 1</option>
+              <option value="2">🛡 Administrador — cargo 2</option>
             </select>
           </label>
           <button class="primary" type="submit">Adicionar cargo</button>
           <div id="adminRoleMsg" class="message"></div>
         </form>
+        <div id="adminModeratorNotice" class="message hidden">Você está no cargo 1 (Moderador). O gerenciamento de cargos fica disponível somente para administradores (cargo 2).</div>
       </div>
 
       <div class="card admin-card">
         <h3>Equipe do site</h3>
-        <p class="muted">Administradores e moderadores com brasão visível nos perfis e publicações.</p>
+        <p class="muted">Cargo 0 = Usuário · Cargo 1 = Moderador · Cargo 2 = Administrador.</p>
         <div id="adminTeamList" class="list"><p class="muted">Carregando...</p></div>
       </div>
     </div>
