@@ -822,3 +822,30 @@ body.auth-checking{background:#060713 !important;min-height:100vh;}
 .landing .desktop-nav{display:none!important;}
 html:not(.eclipse-logged-in) #chatLauncher,
 html:not(.eclipse-logged-in) #messageDock{display:none!important;}
+.profile-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.profile-photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;display:block}.profile-friends-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:14px}.profile-friend-person{width:100%;justify-content:flex-start}.profile-friend-person span{display:flex;flex-direction:column;align-items:flex-start}.profile-photos-card,.profile-friends-card{padding:20px}
+
+/* === RECONSTRUÇÃO DOS STORIES === */
+.stories-list{scrollbar-width:thin}
+.story-card{border:1px solid rgba(139,92,246,.22);cursor:pointer}
+.story-card video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.72}
+.story-card-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.72));pointer-events:none}
+.story-card .story-avatar{z-index:2}
+.story-card strong{z-index:2;text-shadow:0 1px 4px #000}
+.story-card.own-story{border-color:#8b5cf6}
+.story-count{position:absolute;z-index:3;right:7px;top:7px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#8b5cf6;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center}
+.story-loading,.story-empty{padding:20px;text-align:center;min-width:100%}
+.story-progress{display:flex;gap:4px;padding:9px 10px 0}
+.story-progress span{height:3px;flex:1;border-radius:5px;background:#353957}
+.story-progress span.done{background:#fff}
+.story-viewer-modal{z-index:500}
+.story-open{overflow:hidden}
+
+/* === CONFIGURAÇÕES ORGANIZADAS === */
+.settings-menu-group{margin-bottom:8px}
+.settings-menu-category{font-size:10px;letter-spacing:.12em;color:#737b9c;font-weight:850;padding:8px 10px 5px}
+.settings-option-card{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.settings-option-card>div{flex:1}
+.settings-option-card h3{margin:0 0 5px;color:#fff}
+.settings-option-card p{margin:0}
+.settings-option-card select{min-width:170px}
+@media(max-width:600px){.settings-option-card{align-items:flex-start;flex-direction:column}.settings-option-card select{width:100%}}
