@@ -768,3 +768,54 @@ body.auth-checking{background:#060713 !important;min-height:100vh;}
 @keyframes eclipseFade{from{opacity:.35;transform:translateY(2px)}to{opacity:1;transform:none}}
 @media(max-width:900px){.settings-layout{grid-template-columns:1fr}.settings-menu{position:static;display:flex;gap:6px;overflow:auto}.settings-menu-btn{width:auto;white-space:nowrap}.admin-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.admin-stat-grid{grid-template-columns:1fr}.admin-tabs{position:static}.admin-tab{flex:1 1 auto}}
+
+/* === Configurações — experiência inspirada no Facebook === */
+.facebook-settings{max-width:1180px}
+.settings-search{display:flex;align-items:center;gap:10px;padding:11px 15px;margin-bottom:16px}
+.settings-search span{font-size:20px;color:#8f96b5}
+.settings-search input{flex:1;border:0;outline:0;background:transparent;color:#fff;font-size:14px}
+.settings-search input::placeholder{color:#7f86a5}
+.settings-menu-title{font-size:19px;font-weight:850;color:#fff;padding:9px 10px 12px}
+.settings-menu-btn{min-height:64px;padding:10px;border-radius:12px;gap:12px}
+.settings-menu-btn.hidden{display:none}
+.settings-menu-btn b{display:block;color:inherit;font-size:14px}
+.settings-menu-btn small{display:block;margin-top:3px;color:#7f86a5;font-weight:600;font-size:11px;line-height:1.25}
+.settings-menu-btn.active small{color:#b9b4d8}
+.settings-menu-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:50%;background:#151833;border:1px solid #292d50;font-size:17px}
+.settings-menu-btn.active .settings-menu-icon{background:rgba(124,58,237,.22);border-color:rgba(139,92,246,.4)}
+.settings-menu-divider{height:1px;background:rgba(255,255,255,.07);margin:10px 8px}
+.settings-menu-label{font-size:10px;letter-spacing:.12em;color:#737b9c;font-weight:850;padding:5px 10px}
+.settings-menu-help{font-size:11px;line-height:1.45;color:#737b9c;padding:0 10px 8px;margin:4px 0}
+.settings-section-heading{margin:0 0 12px}
+.settings-section-heading h3{margin:0 0 5px;font-size:22px;color:#fff}
+.settings-section-heading p{margin:0}
+.settings-row-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+.settings-row-heading h3{margin:0 0 5px;color:#fff}
+.settings-row-heading p{margin:0}
+.privacy-info-card{margin-top:14px}
+.blocked-users-list{display:grid;gap:8px;margin-top:12px}
+.blocked-user-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #292d50;background:#090b1b;border-radius:11px}
+.blocked-user-row>div{flex:1;min-width:0}
+.blocked-user-row strong{display:block;color:#fff}
+.blocked-user-row small{display:block;color:#7f86a5;margin-top:2px}
+@media(max-width:900px){
+  .settings-search{margin-bottom:12px}
+  .settings-menu{padding:8px}
+  .settings-menu-title{display:none}
+  .settings-menu-help,.settings-menu-divider,.settings-menu-label{display:none}
+  .settings-menu-btn{min-width:190px;flex:0 0 auto}
+}
+
+/* === Publicações no perfil + mídia padronizada === */
+.profile-post{padding:16px;margin:0 0 12px;border:1px solid var(--eclipse-border,#292d50);border-radius:12px;background:var(--eclipse-card-2,#12142d);overflow:hidden;box-sizing:border-box}
+.profile-post-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.profile-post-head strong{display:block;font-size:14px;color:var(--eclipse-text,#eef0ff)}
+.profile-post-head small{display:block;margin-top:3px;font-size:11px;color:var(--eclipse-muted,#9da1bd)}
+.profile-post-text{margin:0 0 12px;white-space:pre-wrap;line-height:1.55;color:var(--eclipse-text,#eef0ff)}
+.profile-post-image,.post-image,.group-post-media{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;border-radius:10px;margin:10px auto 0;background:#050713}
+.profile-post-video{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;border-radius:10px;margin:10px auto 0;background:#050713}
+.post-video{display:block;width:500px!important;height:500px!important;max-width:100%!important;max-height:500px!important;aspect-ratio:1/1;object-fit:cover;margin:8px auto 0;border-radius:10px;background:#050713}
+.story-card img{width:100%!important;height:100%!important;object-fit:cover}
+@media(max-width:540px){
+  .profile-post-image,.post-image,.group-post-media,.profile-post-video,.post-video{width:100%!important;height:auto!important;aspect-ratio:1/1;max-height:none!important}
+}
