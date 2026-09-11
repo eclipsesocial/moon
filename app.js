@@ -306,71 +306,163 @@ async function toggleLike(id){const ref=db.ref('posts/'+id),snap=await ref.once(
 async function toggleComments(id,forceReload=false){const box=$('comments-'+id);if(!box)return;if(box.classList.contains('loaded')&&!forceReload){box.classList.toggle('open');return}const s=await db.ref('comments/'+id).orderByChild('createdAt').once('value');const a=[];s.forEach(x=>a.push({id:x.key,...x.val()}));box.innerHTML=`<div class="comments-list">${a.map(c=>`<div class="comment"><div><strong>${esc(c.name||'Usuário')}</strong><span>${esc(c.text)}</span></div>${canManageContent(c.uid)?`<button class="comment-delete" title="Apagar comentário" data-delete-comment="${c.id}" data-delete-comment-post="${id}">Apagar</button>`:''}</div>`).join('')}</div><form class="comment-form" data-comment-form="${id}"><input placeholder="Escreva um comentário..." required><button>Enviar</button></form>`;box.classList.add('loaded','open');box.querySelectorAll('[data-delete-comment]').forEach(b=>b.onclick=()=>deleteComment(b.dataset.deleteCommentPost,b.dataset.deleteComment));box.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=e.target.querySelector('input'),text=input.value.trim();if(!text)return;await db.ref('comments/'+id).push({uid:currentUser.uid,name:currentUser.displayName||currentProfile?.displayName||'Usuário',text,createdAt:firebase.database.ServerValue.TIMESTAMP});const p=await db.ref('posts/'+id).once('value');await db.ref('posts/'+id).update({commentsCount:(p.val()?.commentsCount||0)+1});await toggleComments(id,true)};}
 async function sharePost(id){const p=await db.ref('posts/'+id).once('value');if(!p.exists())return;const v=p.val();await db.ref('shares/'+id).push({uid:currentUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});await db.ref('posts/'+id).update({sharesCount:(v.sharesCount||0)+1});alert('Publicação compartilhada.');loadFeed()}
 async function loadStories(){
+  const root=$('storiesList');
+  if(!root||!currentUser||!db)return;
+  root.innerHTML='<div class="muted story-loading">Carregando stories...</div>';
   const now=Date.now();
-  const [statusSnap,friendSnap]=await Promise.all([
-    db.ref('statuses').orderByChild('createdAt').limitToLast(80).once('value'),
-    db.ref('friendships/'+currentUser.uid).once('value')
-  ]);
-  const friendIds=new Set(Object.keys(friendSnap.val()||{})); friendIds.add(currentUser.uid);
-  const arr=[];
-  statusSnap.forEach(x=>{
-    const v=x.val()||{}, created=Number(v.createdAt||0), expires=Number(v.expiresAt||0);
-    if((!expires||expires>now) && friendIds.has(v.uid)) arr.push({id:x.key,...v});
-  });
-  arr.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-  const profiles={};
-  for(const x of arr){
-    if(x.uid===currentUser.uid) profiles[x.uid]=currentProfile||await getProfile(x.uid);
-    else profiles[x.uid]??=await getProfile(x.uid);
+  try{
+    const [statusSnap,friendSnap]=await Promise.all([
+      db.ref('statuses').once('value'),
+      db.ref('friendships/'+currentUser.uid).once('value')
+    ]);
+    const friendIds=new Set(Object.keys(friendSnap.val()||{}));
+    friendIds.add(currentUser.uid);
+    const byUser=new Map();
+    const expired=[];
+    statusSnap.forEach(child=>{
+      const v=child.val()||{};
+      const uid=String(v.uid||'');
+      if(!uid||!friendIds.has(uid))return;
+      const created=Number(v.createdAt||0);
+      const expires=Number(v.expiresAt||0) || (created ? created+86400000 : 0);
+      if(expires && expires<=now){ expired.push(child.key); return; }
+      if(!v.imageURL&&!v.videoURL&&!String(v.text||'').trim())return;
+      const item={id:child.key,...v,createdAt:created||now,expiresAt:expires};
+      if(!byUser.has(uid))byUser.set(uid,[]);
+      byUser.get(uid).push(item);
+    });
+    if(expired.length){
+      const cleanup={}; expired.slice(0,100).forEach(id=>cleanup['statuses/'+id]=null);
+      db.ref().update(cleanup).catch(()=>{});
+    }
+    const users=[...byUser.keys()];
+    const profiles={};
+    await Promise.all(users.map(async uid=>{
+      profiles[uid]=uid===currentUser.uid?(currentProfile||await getProfile(uid)):await getProfile(uid);
+    }));
+    storyItems=[];
+    for(const uid of users){
+      const list=byUser.get(uid).sort((a,b)=>a.createdAt-b.createdAt);
+      list.forEach(x=>storyItems.push({...x,profile:profiles[uid]||{}}));
+    }
+    storyItems.sort((a,b)=>{
+      const ao=a.uid===currentUser.uid?0:1,bo=b.uid===currentUser.uid?0:1;
+      return ao-bo || b.createdAt-a.createdAt;
+    });
+    if(!storyItems.length){
+      root.innerHTML='<div class="muted story-empty">Nenhum story disponível. Publique o primeiro.</div>';
+      return;
+    }
+    const cards=[];
+    const seen=new Set();
+    for(const x of storyItems){
+      if(seen.has(x.uid))continue;
+      seen.add(x.uid);
+      const p=x.profile||{};
+      const count=storyItems.filter(y=>y.uid===x.uid).length;
+      const thumb=x.imageURL?`<img src="${esc(x.imageURL)}" alt="">`:x.videoURL?`<video src="${esc(x.videoURL)}" muted playsinline preload="metadata"></video>`:`<div class="story-text-preview">${esc(x.text||'Story')}</div>`;
+      cards.push(`<button type="button" class="story-card ${x.uid===currentUser.uid?'own-story':''}" data-story-uid="${esc(x.uid)}">
+        ${thumb}
+        <span class="story-card-shade"></span>
+        <span class="story-avatar">${p.photoURL?`<img src="${esc(p.photoURL)}" alt="">`:'☾'}</span>
+        <strong>${x.uid===currentUser.uid?'Seu story':esc(p.displayName||x.displayName||'Usuário')}</strong>
+        ${count>1?`<span class="story-count">${count}</span>`:''}
+      </button>`);
+    }
+    root.innerHTML=cards.join('');
+    root.querySelectorAll('[data-story-uid]').forEach(btn=>{
+      btn.onclick=()=>{
+        const uid=btn.dataset.storyUid;
+        const first=storyItems.findIndex(x=>x.uid===uid);
+        if(first>=0)openStoryViewer(first);
+      };
+    });
+  }catch(e){
+    console.error('loadStories',e);
+    root.innerHTML='<div class="muted story-empty">Não foi possível carregar os stories.</div>';
   }
-  storyItems=arr.map(x=>({...x,profile:profiles[x.uid]||{}}));
-  // O story do usuário logado deve sempre ficar visível na própria barra,
-  // independentemente de ele possuir uma entrada em friendships.
-  storyItems.sort((a,b)=>{
-    const ao=a.uid===currentUser.uid?0:1, bo=b.uid===currentUser.uid?0:1;
-    return ao-bo || ((a.createdAt||0)-(b.createdAt||0));
-  });
-  const groups=[];
-  const seen=new Set();
-  for(const x of storyItems){
-    if(seen.has(x.uid))continue; seen.add(x.uid);
-    const p=x.profile||{};
-    groups.push(`<button class="story-card" data-story-index="${storyItems.findIndex(y=>y.uid===x.uid)}">
-      ${x.imageURL?`<img src="${esc(x.imageURL)}" alt="">`:x.videoURL?`<div class="story-media-placeholder">▶</div>`:`<div class="story-text-preview">${esc(x.text||'Story')}</div>`}
-      <div class="story-avatar">${p.photoURL?`<img src="${esc(p.photoURL)}" alt="">`:'☾'}</div>
-      <strong>${x.uid===currentUser.uid?'Seu story':esc(p.displayName||x.displayName||'Amigo')}</strong>
-    </button>`);
-  }
-  $('storiesList').innerHTML=groups.join('')||'<div class="muted">Seus amigos ainda não publicaram stories.</div>';
-  $('storiesList').querySelectorAll('[data-story-index]').forEach(b=>b.onclick=()=>openStoryViewer(Number(b.dataset.storyIndex)));
 }
 async function openStoryViewer(index){
   if(!storyItems.length)return;
   activeStoryIndex=Math.max(0,Math.min(index,storyItems.length-1));
-  const m=$('storyViewerModal'); if(!m)return;
-  m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); renderStoryViewer();
+  const m=$('storyViewerModal');if(!m)return;
+  m.classList.remove('hidden');m.setAttribute('aria-hidden','false');
+  document.body.classList.add('story-open');
+  renderStoryViewer();
 }
-function closeStoryViewer(){const m=$('storyViewerModal');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true')}}
+function closeStoryViewer(){
+  const m=$('storyViewerModal');
+  if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true')}
+  document.body.classList.remove('story-open');
+  const v=document.querySelector('#storyViewerContent video');if(v){v.pause();v.removeAttribute('src');v.load()}
+}
 function renderStoryViewer(){
-  const x=storyItems[activeStoryIndex]; if(!x)return;
+  const x=storyItems[activeStoryIndex];if(!x)return;
   const p=x.profile||{};
-  const media=x.videoURL?`<video class="story-view-media" src="${esc(x.videoURL)}" controls autoplay playsinline></video>`:x.imageURL?`<img class="story-view-media" src="${esc(x.imageURL)}" alt="Story">`:'';
   const own=x.uid===currentUser.uid;
-  $('storyViewerContent').innerHTML=`<div class="story-view-head">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.displayName||'Usuário')}</strong><small>@${esc(p.username||'')}</small></div><span class="story-time">${formatRelativeTime(x.createdAt)}</span></div><div class="story-view-body">${media}${x.text?`<div class="story-view-text">${esc(x.text)}</div>`:''}</div><div class="story-view-actions"><button class="secondary" id="storyPrev">‹ Anterior</button><button class="secondary" id="storyNext">Próximo ›</button>${own?`<button class="danger" id="storyDelete">Excluir</button>`:''}</div>`;
+  const userStories=storyItems.filter(y=>y.uid===x.uid);
+  const pos=userStories.findIndex(y=>y.id===x.id)+1;
+  const media=x.videoURL?`<video class="story-view-media" src="${esc(x.videoURL)}" controls autoplay playsinline></video>`:x.imageURL?`<img class="story-view-media" src="${esc(x.imageURL)}" alt="Story">`:'';
+  $('storyViewerContent').innerHTML=`
+    <div class="story-progress">${userStories.map((_,i)=>`<span class="${i<pos?'done':''}"></span>`).join('')}</div>
+    <div class="story-view-head">${avatar(p.photoURL,'mini-avatar')}<div><strong>${esc(p.displayName||x.displayName||'Usuário')}${own?' · Seu story':''}</strong><small>@${esc(p.username||'')}</small></div><span class="story-time">${formatRelativeTime(x.createdAt)}</span></div>
+    <div class="story-view-body">${media}${x.text?`<div class="story-view-text">${esc(x.text)}</div>`:''}</div>
+    <div class="story-view-actions">
+      <button class="secondary" id="storyPrev" type="button">‹ Anterior</button>
+      <button class="secondary" id="storyNext" type="button">Próximo ›</button>
+      ${own?`<button class="danger" id="storyDelete" type="button">Excluir</button>`:''}
+    </div>`;
+  $('storyPrev').disabled=activeStoryIndex<=0;
+  $('storyNext').disabled=activeStoryIndex>=storyItems.length-1;
   $('storyPrev').onclick=()=>{if(activeStoryIndex>0){activeStoryIndex--;renderStoryViewer()}};
   $('storyNext').onclick=()=>{if(activeStoryIndex<storyItems.length-1){activeStoryIndex++;renderStoryViewer()}};
   $('storyDelete')?.addEventListener('click',deleteActiveStory);
 }
 async function deleteActiveStory(){
-  const x=storyItems[activeStoryIndex]; if(!x||x.uid!==currentUser.uid)return;
+  const x=storyItems[activeStoryIndex];
+  if(!x||x.uid!==currentUser.uid)return;
   if(!confirm('Excluir este story?'))return;
-  try{if(x.mediaKey)await deleteFromR2(x.mediaKey);await db.ref('statuses/'+x.id).remove();storyItems.splice(activeStoryIndex,1);if(!storyItems.length){closeStoryViewer();await loadStories();return}activeStoryIndex=Math.min(activeStoryIndex,storyItems.length-1);renderStoryViewer();await loadStories()}catch(e){alert('Não foi possível excluir o story: '+firebaseMessage(e))}
+  try{
+    if(x.mediaKey)await deleteFromR2(x.mediaKey);
+    await db.ref('statuses/'+x.id).remove();
+    storyItems.splice(activeStoryIndex,1);
+    if(!storyItems.length){closeStoryViewer();await loadStories();return}
+    activeStoryIndex=Math.min(activeStoryIndex,storyItems.length-1);
+    renderStoryViewer();await loadStories();
+  }catch(e){alert('Não foi possível excluir o story: '+firebaseMessage(e))}
 }
 async function loadSuggestions(){const s=await db.ref('profiles').limitToFirst(20).once('value');const arr=[];s.forEach(x=>{if(x.key!==currentUser.uid)arr.push({uid:x.key,...x.val()})});$('suggestionsList').innerHTML=arr.slice(0,5).map(x=>`<div class="suggestion"><button class="suggestion-person" data-profile-uid="${x.uid}">${avatar(x.photoURL,'mini-avatar')}<span><strong>${esc(x.displayName||'Usuário')}</strong><small>@${esc(x.username||'')}</small></span></button><button class="add-friend" data-add-friend="${x.uid}">Adicionar</button></div>`).join('')||'<p class="muted">Nenhuma sugestão encontrada.</p>';document.querySelectorAll('[data-add-friend]').forEach(b=>b.onclick=()=>sendFriendRequest(b.dataset.addFriend,b));document.querySelectorAll('.suggestion-person').forEach(b=>b.onclick=()=>viewProfile(b.dataset.profileUid))}
 function bindFeed(){$('closeStoryViewer')?.addEventListener('click',closeStoryViewer);$('storyViewerModal')?.addEventListener('click',e=>{if(e.target.id==='storyViewerModal')closeStoryViewer()});$('thinkingBtn').onclick=()=>openModal('postModal');$('composerPhotoBtn').onclick=()=>openModal('postModal');$('createStoryBtn').onclick=()=>openModal('storyModal');document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.add('hidden'));$('publishBtn').onclick=publishPost;$('publishStoryBtn').onclick=publishStory}
 function openModal(id){$(id)?.classList.remove('hidden')}
 async function publishPost(){const text=$('postText').value.trim(),file=$('postImage').files[0];if(!text&&!file){msg($('postMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,likesCount:0,commentsCount:0,sharesCount:0,reactions:{}};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1400,maxHeight:1400,maxOutput:1800*1024});r=await uploadToR2(dataURLToBlob(optimized),'posts',currentUser.uid,file.name||'foto.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'videos',currentUser.uid,file.name||'video.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('posts').push(data);$('postText').value='';$('postImage').value='';if($('postMediaName'))$('postMediaName').textContent='Nenhuma mídia selecionada';$('postModal').classList.add('hidden');await loadHome()}catch(e){msg($('postMsg'),'Não foi possível publicar: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar'}}
-async function publishStory(){const text=$('storyText').value.trim(),file=$('storyImage').files[0];if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}const b=$('publishStoryBtn');b.disabled=true;b.textContent='Publicando...';try{const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,expiresAt:Date.now()+24*60*60*1000};if(file){let r;if(file.type.startsWith('image/')){const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1600*1024});r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');data.imageURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else if(file.type.startsWith('video/')){r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');data.videoURL=r.url;data.mediaKey=r.key;data.mediaType=r.type}else throw new Error('Formato de mídia não suportado.')}await db.ref('statuses').push(data);$('storyText').value='';$('storyImage').value='';if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';$('storyModal').classList.add('hidden');await loadHome()}catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}finally{b.disabled=false;b.textContent='Publicar story'}}async function renderOwnProfile(){activeProfileUid=currentUser.uid;const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
+async function publishStory(){
+  const text=String($('storyText')?.value||'').trim();
+  const file=$('storyImage')?.files?.[0]||null;
+  if(!text&&!file){msg($('storyMsg'),'Escreva algo ou escolha uma mídia.');return}
+  const b=$('publishStoryBtn');if(b){b.disabled=true;b.textContent='Publicando...'}
+  try{
+    const data={uid:currentUser.uid,text,createdAt:firebase.database.ServerValue.TIMESTAMP,expiresAt:Date.now()+86400000};
+    if(file){
+      if(file.size>100*1024*1024)throw new Error('O arquivo deve ter no máximo 100 MB.');
+      if(file.type.startsWith('image/')){
+        const optimized=await imageFileToDataURL(file,{maxWidth:1080,maxHeight:1920,maxOutput:1800*1024});
+        const r=await uploadToR2(dataURLToBlob(optimized),'stories',currentUser.uid,file.name||'story.jpg');
+        data.imageURL=r.url;data.mediaKey=r.key;data.mediaType='image';
+      }else if(file.type.startsWith('video/')){
+        const r=await uploadToR2(file,'stories',currentUser.uid,file.name||'story.mp4');
+        data.videoURL=r.url;data.mediaKey=r.key;data.mediaType='video';
+      }else throw new Error('Formato não suportado. Use JPG, PNG, WEBP, MP4, WEBM ou MOV.');
+    }
+    await db.ref('statuses').push(data);
+    if($('storyText'))$('storyText').value='';
+    if($('storyImage'))$('storyImage').value='';
+    if($('storyMediaName'))$('storyMediaName').textContent='Nenhuma mídia selecionada';
+    $('storyModal')?.classList.add('hidden');
+    await loadStories();
+  }catch(e){msg($('storyMsg'),'Não foi possível publicar o story: '+firebaseMessage(e))}
+  finally{if(b){b.disabled=false;b.textContent='Publicar story'}}
+}
+async function renderOwnProfile(){activeProfileUid=currentUser.uid;const p=currentProfile||await getProfile(currentUser.uid);$('publicProfile').innerHTML=profileHTML(p,true);bindProfileButtons()}
 async function viewProfile(uid){
   if(!uid)return;
   activeProfileUid=uid;
